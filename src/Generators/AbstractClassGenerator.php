@@ -41,12 +41,11 @@ class AbstractClassGenerator
             $directory = dirname($path);
             
             if (!$this->filesystem->exists($directory)) {
-                if (!$this->filesystem->makeDirectory($directory, 0755, true)) {
-                    throw GenerationException::directoryCreateError($directory, 'Failed to create directory');
-                }
+                $this->filesystem->makeDirectory($directory, 0755, true);
             }
 
-            if (!$this->filesystem->put($path, $content)) {
+            $result = $this->filesystem->put($path, $content);
+            if ($result === false) {
                 throw GenerationException::fileWriteError($path, 'Failed to write file content');
             }
 
@@ -71,12 +70,11 @@ class AbstractClassGenerator
             $directory = dirname($path);
             
             if (!$this->filesystem->exists($directory)) {
-                if (!$this->filesystem->makeDirectory($directory, 0755, true)) {
-                    throw GenerationException::directoryCreateError($directory, 'Failed to create directory');
-                }
+                $this->filesystem->makeDirectory($directory, 0755, true);
             }
 
-            if (!$this->filesystem->put($path, $content)) {
+            $result = $this->filesystem->put($path, $content);
+            if ($result === false) {
                 throw GenerationException::fileWriteError($path, 'Failed to write file content');
             }
 

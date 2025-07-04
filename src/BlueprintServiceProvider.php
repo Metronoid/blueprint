@@ -8,6 +8,10 @@ use Blueprint\Commands\InitCommand;
 use Blueprint\Commands\NewCommand;
 use Blueprint\Commands\PublishStubsCommand;
 use Blueprint\Commands\TraceCommand;
+use Blueprint\Contracts\PluginDiscovery;
+use Blueprint\Contracts\PluginManager;
+use Blueprint\Plugin\PluginDiscovery as ConcretePluginDiscovery;
+use Blueprint\Plugin\PluginManager as ConcretePluginManager;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Contracts\Support\DeferrableProvider;
@@ -36,6 +40,9 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
         $this->publishes([
             dirname(__DIR__) . '/stubs' => CUSTOM_STUBS_PATH,
         ], 'blueprint-stubs');
+
+        // Boot plugin system
+        $this->bootPluginSystem();
     }
 
     /**
@@ -50,6 +57,9 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
 
         File::mixin(new FileMixins);
 
+        // Register plugin system
+        $this->registerPluginSystem();
+
         $this->app->bind('command.blueprint.build', fn ($app) => new BuildCommand($app['files'], app(Builder::class)));
         $this->app->bind('command.blueprint.erase', fn ($app) => new EraseCommand($app['files']));
         $this->app->bind('command.blueprint.trace', fn ($app) => new TraceCommand($app['files'], app(Tracer::class)));
@@ -59,6 +69,10 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
 
         $this->app->singleton(Blueprint::class, function ($app) {
             $blueprint = new Blueprint;
+            
+            // Set up event dispatcher
+            $blueprint->setEventDispatcher($app['events']);
+            
             $blueprint->registerLexer(new \Blueprint\Lexers\ConfigLexer($app));
             $blueprint->registerLexer(new \Blueprint\Lexers\ModelLexer);
             $blueprint->registerLexer(new \Blueprint\Lexers\SeederLexer);
@@ -99,6 +113,46 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             'command.blueprint.new',
             'command.blueprint.init',
             Blueprint::class,
+            PluginDiscovery::class,
+            PluginManager::class,
         ];
+    }
+
+    /**
+     * Register the plugin system.
+     */
+    private function registerPluginSystem(): void
+    {
+        $this->app->singleton(PluginDiscovery::class, function ($app) {
+            return new ConcretePluginDiscovery($app['files']);
+        });
+
+        $this->app->singleton(PluginManager::class, function ($app) {
+            return new ConcretePluginManager(
+                $app[PluginDiscovery::class],
+                $app['events']
+            );
+        });
+    }
+
+    /**
+     * Boot the plugin system.
+     */
+    private function bootPluginSystem(): void
+    {
+        if (!config('blueprint.plugins.enabled', true)) {
+            return;
+        }
+
+        $pluginManager = $this->app[PluginManager::class];
+        
+        // Discover and register plugins
+        $pluginManager->discoverPlugins();
+        
+        // Register plugin services
+        $pluginManager->registerPluginServices();
+        
+        // Boot plugins
+        $pluginManager->bootPlugins();
     }
 }

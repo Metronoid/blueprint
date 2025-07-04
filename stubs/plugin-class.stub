@@ -1,0 +1,41 @@
+<?php
+
+namespace {{ namespace }};
+
+use Blueprint\Plugin\AbstractPlugin;
+use Blueprint\Contracts\Generator;
+
+class {{ class }} extends AbstractPlugin
+{
+    protected string $name = '{{ name }}';
+    protected string $version = '1.0.0';
+    protected string $description = '{{ description }}';
+    protected string $author = '{{ author }}';
+    protected array $dependencies = [];
+
+    public function register(): void
+    {
+        // Register plugin services, generators, lexers, etc.
+        
+        // Example: Register a custom generator
+        // $this->app->singleton(CustomGenerator::class, function ($app) {
+        //     return new CustomGenerator($app['files']);
+        // });
+    }
+
+    public function boot(): void
+    {
+        // Boot plugin functionality
+        
+        // Example: Register event listeners
+        // $this->app['events']->listen(GenerationStarted::class, function ($event) {
+        //     // Handle generation started event
+        // });
+    }
+
+    public function isCompatible(string $blueprintVersion): bool
+    {
+        // Check if this plugin is compatible with the given Blueprint version
+        return version_compare($blueprintVersion, '1.0.0', '>=');
+    }
+} 

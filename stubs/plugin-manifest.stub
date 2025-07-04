@@ -1,0 +1,23 @@
+{
+    "name": "{{ name }}",
+    "version": "1.0.0",
+    "description": "{{ description }}",
+    "author": "{{ author }}",
+    "class": "{{ namespace }}\\{{ class }}",
+    "dependencies": {
+        "blueprint/blueprint": "^1.0"
+    },
+    "config": {
+        "example_setting": "default_value"
+    },
+    "generators": [
+        "{{ namespace }}\\Generators\\{{ class }}Generator"
+    ],
+    "lexers": [
+        "{{ namespace }}\\Lexers\\{{ class }}Lexer"
+    ],
+    "events": {
+        "generation_started": "{{ namespace }}\\Listeners\\GenerationStartedListener",
+        "generation_completed": "{{ namespace }}\\Listeners\\GenerationCompletedListener"
+    }
+} 

@@ -1,0 +1,57 @@
+<?php
+
+namespace {{ namespace }}\Generators;
+
+use Blueprint\Contracts\PluginGenerator;
+use Blueprint\Contracts\Plugin;
+use Blueprint\Generators\AbstractClassGenerator;
+use Blueprint\Tree;
+
+class {{ class }}Generator extends AbstractClassGenerator implements PluginGenerator
+{
+    protected array $types = ['{{ types }}'];
+    
+    private Plugin $plugin;
+    private array $config = [];
+
+    public function __construct(\Illuminate\Filesystem\Filesystem $filesystem, Plugin $plugin)
+    {
+        parent::__construct($filesystem);
+        $this->plugin = $plugin;
+    }
+
+    public function output(Tree $tree): array
+    {
+        $this->tree = $tree;
+        
+        // Your custom generation logic here
+        
+        return $this->output;
+    }
+
+    public function getPlugin(): Plugin
+    {
+        return $this->plugin;
+    }
+
+    public function getPriority(): int
+    {
+        return 100; // Default priority
+    }
+
+    public function shouldRun(Tree $tree): bool
+    {
+        // Determine if this generator should run for the given tree
+        return true;
+    }
+
+    public function getConfig(): array
+    {
+        return $this->config;
+    }
+
+    public function setConfig(array $config): void
+    {
+        $this->config = $config;
+    }
+} 

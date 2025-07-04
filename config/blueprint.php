@@ -174,4 +174,22 @@ return [
         'policy' => \Blueprint\Generators\PolicyGenerator::class,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Plugin System
+    |--------------------------------------------------------------------------
+    |
+    | Configure the Blueprint plugin system. Plugins allow you to extend
+    | Blueprint with custom generators, lexers, and other functionality.
+    |
+    */
+    'plugins' => [
+        'enabled' => true,
+        'paths' => [
+            // base_path('plugins'),
+        ],
+        'auto_discover' => true,
+        'cache_manifests' => true,
+    ],
+
 ];
