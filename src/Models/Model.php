@@ -33,6 +33,8 @@ class Model implements BlueprintModel
 
     private array $indexes = [];
 
+    private array $traits = [];
+
     public function __construct($name)
     {
         $this->name = class_basename($name);
@@ -260,5 +262,20 @@ class Model implements BlueprintModel
     public function polymorphicManyToManyTables(): array
     {
         return $this->polymorphicManyToManyTables;
+    }
+
+    public function addTrait(string $trait): void
+    {
+        $this->traits[] = $trait;
+    }
+
+    public function traits(): array
+    {
+        return $this->traits;
+    }
+
+    public function hasTraits(): bool
+    {
+        return !empty($this->traits);
     }
 }

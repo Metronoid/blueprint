@@ -460,6 +460,22 @@ class ModelGenerator extends AbstractClassGenerator implements Generator
             $traits[] = 'HasUuids';
         }
 
+        // Add custom traits defined in the model
+        if ($model->hasTraits()) {
+            foreach ($model->traits() as $trait) {
+                // Only add the trait name to the use statement, no namespace
+                $traitName = class_basename($trait);
+                $traits[] = $traitName;
+                
+                // Add import for the full trait class if it contains namespace separators
+                if (str_contains($trait, '\\')) {
+                    $this->addImport($model, $trait);
+                }
+            }
+        }
+
+        // Remove duplicates and sort
+        $traits = array_unique($traits);
         sort($traits);
 
         return Str::replaceFirst('use HasFactory', 'use ' . implode(', ', $traits), $stub);

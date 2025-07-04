@@ -6,6 +6,7 @@ use Blueprint\Lexers\ModelLexer;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Blueprint\Models\Column;
 
 final class ModelLexerTest extends TestCase
 {
@@ -740,6 +741,131 @@ final class ModelLexerTest extends TestCase
         $relationships = $model->relationships();
         $this->assertCount(1, $relationships);
         $this->assertEquals(['User:Lead', 'Client:Customer', 'Organization:company_id'], $relationships['belongsTo']);
+    }
+
+    /** @test */
+    public function it_parses_structured_model_format_with_columns_and_traits(): void
+    {
+        $tokens = [
+            'models' => [
+                'User' => [
+                    'columns' => [
+                        'name' => 'string',
+                        'email' => 'string unique',
+                        'password' => 'string',
+                        'remember_token' => 'rememberToken',
+                    ],
+                    'traits' => [
+                        'HasApiTokens',
+                        'Notifiable',
+                    ],
+                    'relationships' => [
+                        'hasMany' => 'Post',
+                    ],
+                ],
+                'Post' => [
+                    'columns' => [
+                        'title' => 'string:400',
+                        'content' => 'longtext',
+                        'published_at' => 'nullable timestamp',
+                        'author_id' => 'id:user',
+                    ],
+                    'traits' => [
+                        'Searchable',
+                    ],
+                    'timestamps' => true,
+                    'softdeletes' => true,
+                ],
+            ],
+        ];
+
+        $actual = $this->subject->analyze($tokens);
+
+        $this->assertIsArray($actual['models']);
+        $this->assertCount(2, $actual['models']);
+
+        $user = $actual['models']['User'];
+        $this->assertEquals('User', $user->name());
+        $this->assertTrue($user->hasTraits());
+        $this->assertEquals(['HasApiTokens', 'Notifiable'], $user->traits());
+
+        $userColumns = $user->columns();
+        $this->assertCount(5, $userColumns); // id, name, email, password, remember_token
+        $this->assertEquals('name', $userColumns['name']->name());
+        $this->assertEquals('string', $userColumns['name']->dataType());
+        $this->assertEquals('email', $userColumns['email']->name());
+        $this->assertEquals('string', $userColumns['email']->dataType());
+        $this->assertEquals(['unique'], $userColumns['email']->modifiers());
+
+        $post = $actual['models']['Post'];
+        $this->assertEquals('Post', $post->name());
+        $this->assertTrue($post->hasTraits());
+        $this->assertEquals(['Searchable'], $post->traits());
+        $this->assertTrue($post->usesSoftDeletes());
+
+        $postColumns = $post->columns();
+        $this->assertEquals('title', $postColumns['title']->name());
+        $this->assertEquals('string', $postColumns['title']->dataType());
+        $this->assertEquals(['400'], $postColumns['title']->attributes());
+    }
+
+    /** @test */
+    public function it_maintains_backward_compatibility_with_flat_model_format(): void
+    {
+        $tokens = [
+            'models' => [
+                'Post' => [
+                    'title' => 'string:400',
+                    'content' => 'longtext',
+                    'published_at' => 'nullable timestamp',
+                    'author_id' => 'id:user',
+                ],
+            ],
+        ];
+
+        $actual = $this->subject->analyze($tokens);
+
+        $this->assertIsArray($actual['models']);
+        $this->assertCount(1, $actual['models']);
+
+        $post = $actual['models']['Post'];
+        $this->assertEquals('Post', $post->name());
+        $this->assertFalse($post->hasTraits()); // No traits in old format
+        $this->assertEquals([], $post->traits());
+
+        $postColumns = $post->columns();
+        $this->assertCount(5, $postColumns); // id, title, content, published_at, author_id
+        $this->assertEquals('title', $postColumns['title']->name());
+        $this->assertEquals('string', $postColumns['title']->dataType());
+        $this->assertEquals(['400'], $postColumns['title']->attributes());
+    }
+
+    /** @test */
+    public function it_parses_traits_from_string_format(): void
+    {
+        // This test simulates how Blueprint's YAML parsing converts trait arrays to strings
+        $tokens = [
+            'models' => [
+                'User' => [
+                    'columns' => [
+                        'name' => 'string',
+                        'email' => 'string unique',
+                    ],
+                    'traits' => 'HasApiTokens Notifiable', // String format (from YAML processing)
+                ],
+            ],
+        ];
+
+        $actual = $this->subject->analyze($tokens);
+
+        $user = $actual['models']['User'];
+        $this->assertEquals('User', $user->name());
+        $this->assertTrue($user->hasTraits());
+        $this->assertEquals(['HasApiTokens', 'Notifiable'], $user->traits());
+
+        $userColumns = $user->columns();
+        $this->assertCount(3, $userColumns); // id, name, email
+        $this->assertArrayNotHasKey('traits', $userColumns); // traits should not be a column
     }
 
     public static function dataTypeAttributesDataProvider(): array

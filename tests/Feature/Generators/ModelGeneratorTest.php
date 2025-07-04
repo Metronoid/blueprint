@@ -634,6 +634,49 @@ final class ModelGeneratorTest extends TestCase
         $this->assertEquals(['created' => ['app/Models/User.php']], $this->subject->output($tree));
     }
 
+    /** @test */
+    public function it_generates_models_with_custom_traits(): void
+    {
+        $this->filesystem->expects('stub')
+            ->with('model.class.stub')
+            ->andReturn($this->stub('model.class.stub'));
+        $this->filesystem->expects('stub')
+            ->with('model.fillable.stub')
+            ->andReturn($this->stub('model.fillable.stub'));
+        $this->filesystem->expects('stub')
+            ->with('model.casts.stub')
+            ->andReturn($this->stub('model.casts.stub'));
+
+        $this->filesystem->expects('exists')
+            ->with('app/Models')
+            ->andReturnTrue();
+
+        $userModel = 'app/Models/User.php';
+        $this->filesystem->expects('put')
+            ->with($userModel, \Mockery::on(function ($content) {
+                return str_contains($content, 'use HasApiTokens, HasFactory, Notifiable;') &&
+                       str_contains($content, 'class User extends Model');
+            }));
+
+        $tokens = [
+            'models' => [
+                'User' => [
+                    'columns' => [
+                        'name' => 'string',
+                        'email' => 'string unique',
+                    ],
+                    'traits' => [
+                        'HasApiTokens',
+                        'Notifiable',
+                    ],
+                ],
+            ],
+        ];
+
+        $tree = $this->blueprint->analyze($tokens);
+        $this->assertEquals(['created' => [$userModel]], $this->subject->output($tree));
+    }
+
     public static function modelTreeDataProvider(): array
     {
         return [

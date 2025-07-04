@@ -1,0 +1,29 @@
+models:
+  User:
+    columns:
+      name: string
+      email: string unique
+      password: string
+    traits:
+      - HasApiTokens
+      - Notifiable
+    relationships:
+      hasMany: Post
+
+  Post:
+    columns:
+      title: string:400
+      content: longtext
+      published_at: nullable timestamp
+      author_id: id:user
+    traits:
+      - Searchable
+    softdeletes: true
+    relationships:
+      belongsTo: User
+
+controllers:
+  Post:
+    index:
+      query: all
+      render: post.index with:posts 

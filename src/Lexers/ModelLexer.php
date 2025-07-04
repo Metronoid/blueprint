@@ -129,9 +129,44 @@ class ModelLexer implements Lexer
         return $registry;
     }
 
-    private function buildModel(string $name, array $columns): Model
+    private function buildModel(string $name, array $definition): Model
     {
         $model = new Model($name);
+
+        // Handle structured format: check if 'columns' key exists
+        $hasStructuredFormat = isset($definition['columns']) && is_array($definition['columns']);
+        
+        if ($hasStructuredFormat) {
+            // New structured format
+            $columns = $definition['columns'];
+            
+            // Handle custom traits
+            if (isset($definition['traits'])) {
+                $traits = $definition['traits'];
+                // Handle both array format and space-separated string format (due to Blueprint's dash stripping)
+                if (is_array($traits)) {
+                    foreach ($traits as $trait) {
+                        $model->addTrait($trait);
+                    }
+                } elseif (is_string($traits)) {
+                    // Split space-separated traits
+                    $traitList = array_filter(explode(' ', $traits));
+                    foreach ($traitList as $trait) {
+                        $model->addTrait(trim($trait));
+                    }
+                }
+                unset($definition['traits']);
+            }
+            
+            // Remove columns from definition to prevent it being processed as a column
+            unset($definition['columns']);
+            
+            // Merge remaining definition properties with columns for processing
+            $columns = array_merge($definition, $columns);
+        } else {
+            // Backward compatibility: original format where everything is a column
+            $columns = $definition;
+        }
 
         if (isset($columns['meta']) && is_array($columns['meta'])) {
             if (isset($columns['meta']['connection'])) {
