@@ -4,8 +4,11 @@ namespace Blueprint;
 
 use Blueprint\Contracts\Generator;
 use Blueprint\Contracts\Lexer;
+use Blueprint\Exceptions\ParsingException;
+use Blueprint\Exceptions\ValidationException;
 use Illuminate\Support\Str;
 use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
 
 class Blueprint
 {
@@ -30,61 +33,89 @@ class Blueprint
         return str_replace('\\', '/', config('blueprint.app_path'));
     }
 
-    public function parse($content, $strip_dashes = true)
+    public function parse($content, $strip_dashes = true, ?string $filePath = null)
     {
-        $content = str_replace(["\r\n", "\r"], "\n", $content);
+        try {
+            $content = str_replace(["\r\n", "\r"], "\n", $content);
 
-        if ($strip_dashes) {
-            $content = preg_replace('/^(\s*)-\s*/m', '\1', $content);
+            if ($strip_dashes) {
+                $content = preg_replace('/^(\s*)-\s*/m', '\1', $content);
+            }
+
+            $content = $this->transformDuplicatePropertyKeys($content);
+
+            $content = preg_replace_callback(
+                '/^(\s+)(id|timestamps(Tz)?|softDeletes(Tz)?)$/mi',
+                fn ($matches) => $matches[1] . strtolower($matches[2]) . ': ' . $matches[2],
+                $content
+            );
+
+            $content = preg_replace_callback(
+                '/^(\s+)(id|timestamps(Tz)?|softDeletes(Tz)?): true$/mi',
+                fn ($matches) => $matches[1] . strtolower($matches[2]) . ': ' . $matches[2],
+                $content
+            );
+
+            $content = preg_replace_callback(
+                '/^(\s+)resource?$/mi',
+                fn ($matches) => $matches[1] . 'resource: web',
+                $content
+            );
+
+            $content = preg_replace_callback(
+                '/^(\s+)invokable?$/mi',
+                fn ($matches) => $matches[1] . 'invokable: true',
+                $content
+            );
+
+            $content = preg_replace_callback(
+                '/^(\s+)(ulid|uuid)(: true)?$/mi',
+                fn ($matches) => $matches[1] . 'id: ' . $matches[2] . ' primary',
+                $content
+            );
+
+            $parsed = Yaml::parse($content);
+            
+            // Validate the parsed structure
+            $this->validateParsedStructure($parsed, $filePath);
+            
+            return $parsed;
+        } catch (ParseException $e) {
+            throw ParsingException::invalidYaml($filePath ?? 'unknown', $e->getMessage());
+        } catch (ParsingException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw ParsingException::invalidYaml($filePath ?? 'unknown', $e->getMessage());
         }
-
-        $content = $this->transformDuplicatePropertyKeys($content);
-
-        $content = preg_replace_callback(
-            '/^(\s+)(id|timestamps(Tz)?|softDeletes(Tz)?)$/mi',
-            fn ($matches) => $matches[1] . strtolower($matches[2]) . ': ' . $matches[2],
-            $content
-        );
-
-        $content = preg_replace_callback(
-            '/^(\s+)(id|timestamps(Tz)?|softDeletes(Tz)?): true$/mi',
-            fn ($matches) => $matches[1] . strtolower($matches[2]) . ': ' . $matches[2],
-            $content
-        );
-
-        $content = preg_replace_callback(
-            '/^(\s+)resource?$/mi',
-            fn ($matches) => $matches[1] . 'resource: web',
-            $content
-        );
-
-        $content = preg_replace_callback(
-            '/^(\s+)invokable?$/mi',
-            fn ($matches) => $matches[1] . 'invokable: true',
-            $content
-        );
-
-        $content = preg_replace_callback(
-            '/^(\s+)(ulid|uuid)(: true)?$/mi',
-            fn ($matches) => $matches[1] . 'id: ' . $matches[2] . ' primary',
-            $content
-        );
-
-        return Yaml::parse($content);
     }
 
     public function analyze(array $tokens): Tree
     {
-        $registry = [
-            'models' => [],
-            'controllers' => [],
-        ];
+        try {
+            $registry = [
+                'models' => [],
+                'controllers' => [],
+            ];
 
-        foreach ($this->lexers as $lexer) {
-            $registry = array_merge($registry, $lexer->analyze($tokens));
+            foreach ($this->lexers as $lexer) {
+                $registry = array_merge($registry, $lexer->analyze($tokens));
+            }
+
+            $tree = new Tree($registry);
+            
+            // Validate the analyzed structure
+            $this->validateAnalyzedStructure($tree);
+            
+            return $tree;
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw new ValidationException(
+                'Failed to analyze blueprint structure: ' . $e->getMessage(),
+                4001,
+                $e
+            );
         }
-
-        return new Tree($registry);
     }
 
     public function generate(Tree $tree, array $only = [], array $skip = [], $overwriteMigrations = false): array
@@ -192,5 +223,234 @@ class Blueprint
             implode("\n", $lines),
             $offset
         );
+    }
+
+    /**
+     * Validate the parsed YAML structure for common issues.
+     */
+    private function validateParsedStructure(array $parsed, ?string $filePath): void
+    {
+        // Check for required sections
+        if (empty($parsed['models']) && empty($parsed['controllers']) && empty($parsed['seeders'])) {
+            throw ParsingException::missingRequiredSection('models, controllers, or seeders', $filePath ?? 'unknown');
+        }
+
+        // Validate models section
+        if (isset($parsed['models'])) {
+            $this->validateModelsSection($parsed['models'], $filePath);
+        }
+
+        // Validate controllers section
+        if (isset($parsed['controllers'])) {
+            $this->validateControllersSection($parsed['controllers'], $filePath);
+        }
+
+        // Check for duplicate definitions
+        $this->checkForDuplicateDefinitions($parsed, $filePath);
+    }
+
+    /**
+     * Validate models section structure.
+     */
+    private function validateModelsSection(array $models, ?string $filePath): void
+    {
+        foreach ($models as $modelName => $definition) {
+            if (!is_string($modelName) || empty($modelName)) {
+                throw ParsingException::invalidModelDefinition($modelName, 'Model name must be a non-empty string', $filePath ?? 'unknown');
+            }
+
+            if (!preg_match('/^[A-Z][a-zA-Z0-9_]*$/', $modelName)) {
+                throw ParsingException::invalidModelDefinition($modelName, 'Model name must start with uppercase letter and contain only letters, numbers, and underscores', $filePath ?? 'unknown');
+            }
+
+            if (is_array($definition)) {
+                $this->validateModelDefinition($modelName, $definition, $filePath);
+            }
+        }
+    }
+
+    /**
+     * Validate individual model definition.
+     */
+    private function validateModelDefinition(string $modelName, array $definition, ?string $filePath): void
+    {
+        // Validate columns
+        if (isset($definition['columns'])) {
+            foreach ($definition['columns'] as $columnName => $columnDef) {
+                if (!is_string($columnName) || empty($columnName)) {
+                    throw ValidationException::invalidColumnDefinition($columnName, $modelName, 'Column name must be a non-empty string');
+                }
+
+                if (!preg_match('/^[a-z][a-z0-9_]*$/', $columnName)) {
+                    throw ValidationException::invalidColumnDefinition($columnName, $modelName, 'Column name must start with lowercase letter and contain only letters, numbers, and underscores');
+                }
+            }
+        }
+
+        // Validate relationships
+        if (isset($definition['relationships'])) {
+            $this->validateRelationships($modelName, $definition['relationships'], $filePath);
+        }
+    }
+
+    /**
+     * Validate relationships in model definition.
+     */
+    private function validateRelationships(string $modelName, array $relationships, ?string $filePath): void
+    {
+        $validRelationshipTypes = ['hasOne', 'hasMany', 'belongsTo', 'belongsToMany'];
+
+        foreach ($relationships as $relationshipName => $relationshipDef) {
+            if (is_string($relationshipDef)) {
+                // Simple relationship definition
+                continue;
+            }
+
+            if (is_array($relationshipDef)) {
+                foreach ($relationshipDef as $type => $target) {
+                    if (!in_array($type, $validRelationshipTypes)) {
+                        throw ValidationException::invalidRelationship($type, $modelName, "Unsupported relationship type '{$type}'");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Validate controllers section structure.
+     */
+    private function validateControllersSection(array $controllers, ?string $filePath): void
+    {
+        foreach ($controllers as $controllerName => $definition) {
+            if (!is_string($controllerName) || empty($controllerName)) {
+                throw ParsingException::invalidControllerDefinition($controllerName, 'Controller name must be a non-empty string', $filePath ?? 'unknown');
+            }
+
+            if (!preg_match('/^[A-Z][a-zA-Z0-9_]*$/', $controllerName)) {
+                throw ParsingException::invalidControllerDefinition($controllerName, 'Controller name must start with uppercase letter and contain only letters, numbers, and underscores', $filePath ?? 'unknown');
+            }
+
+            if (is_array($definition)) {
+                $this->validateControllerDefinition($controllerName, $definition, $filePath);
+            }
+        }
+    }
+
+    /**
+     * Validate individual controller definition.
+     */
+    private function validateControllerDefinition(string $controllerName, array $definition, ?string $filePath): void
+    {
+        // Validate methods
+        foreach ($definition as $methodName => $methodDef) {
+            if (!is_string($methodName) || empty($methodName)) {
+                throw ParsingException::invalidControllerDefinition($controllerName, "Method name must be a non-empty string", $filePath ?? 'unknown');
+            }
+
+            if (!preg_match('/^[a-z][a-zA-Z0-9_]*$/', $methodName)) {
+                throw ParsingException::invalidControllerDefinition($controllerName, "Method name '{$methodName}' must start with lowercase letter and contain only letters, numbers, and underscores", $filePath ?? 'unknown');
+            }
+        }
+    }
+
+    /**
+     * Check for duplicate definitions across the parsed structure.
+     */
+    private function checkForDuplicateDefinitions(array $parsed, ?string $filePath): void
+    {
+        $modelNames = array_keys($parsed['models'] ?? []);
+        $controllerNames = array_keys($parsed['controllers'] ?? []);
+
+        // Check for duplicate model names
+        if (count($modelNames) !== count(array_unique($modelNames))) {
+            $duplicates = array_diff_assoc($modelNames, array_unique($modelNames));
+            throw ValidationException::duplicateDefinition('model', reset($duplicates), $filePath ?? 'unknown');
+        }
+
+        // Check for duplicate controller names
+        if (count($controllerNames) !== count(array_unique($controllerNames))) {
+            $duplicates = array_diff_assoc($controllerNames, array_unique($controllerNames));
+            throw ValidationException::duplicateDefinition('controller', reset($duplicates), $filePath ?? 'unknown');
+        }
+    }
+
+    /**
+     * Validate the analyzed tree structure.
+     */
+    private function validateAnalyzedStructure(Tree $tree): void
+    {
+        // Check for circular dependencies in models
+        $this->checkForCircularDependencies($tree);
+
+        // Validate foreign key references
+        $this->validateForeignKeyReferences($tree);
+    }
+
+    /**
+     * Check for circular dependencies in model relationships.
+     */
+    private function checkForCircularDependencies(Tree $tree): void
+    {
+        $models = $tree->models();
+        $dependencies = [];
+
+        foreach ($models as $modelName => $model) {
+            if (is_array($model) && isset($model['relationships'])) {
+                foreach ($model['relationships'] as $relationshipName => $relationshipDef) {
+                    if (is_string($relationshipDef)) {
+                        $dependencies[$modelName][] = $relationshipDef;
+                    } elseif (is_array($relationshipDef)) {
+                        foreach ($relationshipDef as $type => $target) {
+                            if (is_string($target)) {
+                                $dependencies[$modelName][] = $target;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Simple circular dependency detection
+        foreach ($dependencies as $modelName => $deps) {
+            $this->detectCircularDependency($modelName, $deps, $dependencies, [$modelName]);
+        }
+    }
+
+    /**
+     * Recursively detect circular dependencies.
+     */
+    private function detectCircularDependency(string $currentModel, array $deps, array $allDependencies, array $path): void
+    {
+        foreach ($deps as $dependency) {
+            if (in_array($dependency, $path)) {
+                throw ValidationException::circularDependency(array_merge($path, [$dependency]));
+            }
+
+            if (isset($allDependencies[$dependency])) {
+                $this->detectCircularDependency($dependency, $allDependencies[$dependency], $allDependencies, array_merge($path, [$dependency]));
+            }
+        }
+    }
+
+    /**
+     * Validate foreign key references exist.
+     */
+    private function validateForeignKeyReferences(Tree $tree): void
+    {
+        $models = $tree->models();
+        $modelNames = array_keys($models);
+
+        foreach ($models as $modelName => $model) {
+            if (is_array($model) && isset($model['relationships'])) {
+                foreach ($model['relationships'] as $relationshipName => $relationshipDef) {
+                    if (is_string($relationshipDef)) {
+                        $referencedModel = $relationshipDef;
+                        if (!in_array($referencedModel, $modelNames)) {
+                            throw ValidationException::missingForeignKey($relationshipName, $modelName, $referencedModel);
+                        }
+                    }
+                }
+            }
+        }
     }
 }

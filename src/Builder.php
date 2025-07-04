@@ -16,7 +16,7 @@ class Builder
         $contents = $filesystem->get($draft);
         $using_indexes = preg_match('/^\s+indexes:\R/m', $contents) === 1;
 
-        $tokens = $blueprint->parse($contents, !$using_indexes);
+        $tokens = $blueprint->parse($contents, !$using_indexes, $draft);
         $tokens['cache'] = $cache['models'] ?? [];
         $registry = $blueprint->analyze($tokens);
 

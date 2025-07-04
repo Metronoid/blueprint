@@ -4,6 +4,7 @@ namespace Blueprint\Generators;
 
 use Blueprint\Blueprint;
 use Blueprint\Contracts\Model;
+use Blueprint\Exceptions\GenerationException;
 use Blueprint\Tree;
 use Illuminate\Filesystem\Filesystem;
 
@@ -36,12 +37,99 @@ class AbstractClassGenerator
 
     protected function create(string $path, $content): void
     {
-        if (!$this->filesystem->exists(dirname($path))) {
-            $this->filesystem->makeDirectory(dirname($path), 0755, true);
+        try {
+            $directory = dirname($path);
+            
+            if (!$this->filesystem->exists($directory)) {
+                if (!$this->filesystem->makeDirectory($directory, 0755, true)) {
+                    throw GenerationException::directoryCreateError($directory, 'Failed to create directory');
+                }
+            }
+
+            if (!$this->filesystem->put($path, $content)) {
+                throw GenerationException::fileWriteError($path, 'Failed to write file content');
+            }
+
+            $this->output['created'][] = $path;
+        } catch (GenerationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw GenerationException::fileWriteError($path, $e->getMessage());
+        }
+    }
+
+    /**
+     * Create or update a file with conflict detection.
+     */
+    protected function createOrUpdate(string $path, $content, bool $overwrite = false): void
+    {
+        try {
+            if ($this->filesystem->exists($path) && !$overwrite) {
+                throw GenerationException::conflictingFile($path, 'creation');
+            }
+
+            $directory = dirname($path);
+            
+            if (!$this->filesystem->exists($directory)) {
+                if (!$this->filesystem->makeDirectory($directory, 0755, true)) {
+                    throw GenerationException::directoryCreateError($directory, 'Failed to create directory');
+                }
+            }
+
+            if (!$this->filesystem->put($path, $content)) {
+                throw GenerationException::fileWriteError($path, 'Failed to write file content');
+            }
+
+            if ($this->filesystem->exists($path)) {
+                $this->output['updated'][] = $path;
+            } else {
+                $this->output['created'][] = $path;
+            }
+        } catch (GenerationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw GenerationException::fileWriteError($path, $e->getMessage());
+        }
+    }
+
+    /**
+     * Validate that a namespace is valid.
+     */
+    protected function validateNamespace(string $namespace): void
+    {
+        if (empty($namespace)) {
+            throw GenerationException::invalidNamespace($namespace, 'Namespace cannot be empty');
         }
 
-        $this->filesystem->put($path, $content);
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_\\\\]*$/', $namespace)) {
+            throw GenerationException::invalidNamespace($namespace, 'Namespace contains invalid characters');
+        }
 
-        $this->output['created'][] = $path;
+        if (str_contains($namespace, '\\\\')) {
+            throw GenerationException::invalidNamespace($namespace, 'Namespace contains double backslashes');
+        }
+    }
+
+    /**
+     * Safely load a stub file with error handling.
+     */
+    protected function loadStub(string $stubName): string
+    {
+        $stubPaths = [
+            CUSTOM_STUBS_PATH . '/' . $stubName,
+            STUBS_PATH . '/' . $stubName,
+        ];
+
+        foreach ($stubPaths as $stubPath) {
+            if ($this->filesystem->exists($stubPath)) {
+                try {
+                    return $this->filesystem->get($stubPath);
+                } catch (\Exception $e) {
+                    throw GenerationException::invalidStubContent($stubPath, $e->getMessage());
+                }
+            }
+        }
+
+        throw GenerationException::templateNotFound($stubName, $stubPaths);
     }
 }

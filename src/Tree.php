@@ -3,6 +3,7 @@
 namespace Blueprint;
 
 use Blueprint\Models\Component;
+use Blueprint\Exceptions\GenerationException;
 use Illuminate\Support\Str;
 
 class Tree
@@ -71,7 +72,7 @@ class Tree
 
         if (count($matches) !== 1) {
             if ($throw) {
-                throw new \InvalidArgumentException(sprintf('The model class [%s] could not be found.', $this->fqcnForContext($context)));
+                throw GenerationException::modelNotFound($this->fqcnForContext($context), $context);
             }
 
             return null;
