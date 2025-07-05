@@ -1,5 +1,6 @@
 models:
   Person:
-    ulid
-    company_id: ulid
-    timestamps
+    id: ulid
+    columns:
+      company_id: ulid
+    timestamps: true

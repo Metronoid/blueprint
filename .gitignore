@@ -1,6 +1,30 @@
 /vendor/
+**/vendor/
 /build/
 .env
 /.phpunit.cache
+/.phpunit.result.cache
 composer.lock
 docs
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Log files
+*.log
+/storage/logs/
+
+# Cache files
+*.cache

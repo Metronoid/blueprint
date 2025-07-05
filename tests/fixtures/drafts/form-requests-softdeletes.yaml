@@ -1,8 +1,9 @@
 models:
   Project:
-    title: string
-    softDeletes
+    columns:
+      title: string
+      softDeletes: string
 
 controllers:
   Project:
-    resource
+    resource: string

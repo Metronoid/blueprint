@@ -1,0 +1,116 @@
+models:
+  # Example using the new structured format with columns: key
+  Product:
+    columns:
+      name: string:255
+      price: decimal:8,2 min:0.01 max:10000  # inline constraints
+      quantity: integer
+      rating: integer
+      status: enum:active,inactive,discontinued
+      sku: string:50
+      description: text
+      category_id: id foreign:categories
+    constraints:
+      # Model-level constraints for better organization
+      quantity:
+        - min:0
+        - max:1000
+      rating:
+        - between:1,5
+      status:
+        - in:active,inactive,discontinued
+      sku:
+        - regex:^[A-Z]{3}-\d{4}$
+      description:
+        - length:10
+    relationships:
+      belongsTo: Category
+
+  Category:
+    columns:
+      name: string:100
+      slug: string:100
+      is_active: boolean
+      sort_order: integer
+    constraints:
+      slug:
+        - alpha_num
+      sort_order:
+        - min:0
+    relationships:
+      hasMany: Product
+
+  # Example mixing inline and model-level constraints
+  User:
+    columns:
+      name: string:255
+      email: string:191 unique email  # inline constraints
+      age: integer
+      phone: string:20
+      website: string:255 url  # inline constraint
+      ip_address: string:45 ip  # inline constraint
+      preferences: json
+      birth_date: date
+    constraints:
+      # Model-level constraints
+      age:
+        - min:13
+        - max:120
+      phone:
+        - regex:^\+?[1-9]\d{1,14}$
+      birth_date:
+        - before:today
+    relationships:
+      hasMany: Order
+
+  Order:
+    columns:
+      order_number: string:20 unique
+      total: decimal:10,2
+      discount: decimal:5,2
+      status: enum:pending,processing,shipped,delivered,cancelled
+      user_id: id foreign:users
+      created_at: timestamp
+    constraints:
+      total:
+        - min:0
+      discount:
+        - between:0,100
+      status:
+        - in:pending,processing,shipped,delivered,cancelled
+      created_at:
+        - after:2020-01-01
+    relationships:
+      belongsTo: User
+      hasMany: OrderItem
+
+  OrderItem:
+    columns:
+      quantity: integer
+      price: decimal:8,2
+      discount_percent: decimal:5,2
+      product_id: id foreign:products
+      order_id: id foreign:orders
+    constraints:
+      quantity:
+        - min:1
+        - max:999
+      price:
+        - min:0
+      discount_percent:
+        - between:0,100
+    relationships:
+      belongsTo: Product, Order
+
+controllers:
+  Product:
+    resource: web
+
+  Category:
+    resource: web
+
+  User:
+    resource: web
+    
+  Order:
+    resource: web 

@@ -1,7 +1,8 @@
 models:
   State:
     id: false
-    name: string
-    code: string
-    country_id: biginteger unsigned
     timestamps: false
+    columns:
+      name: string
+      code: string
+      country_id: biginteger unsigned

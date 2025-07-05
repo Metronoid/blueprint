@@ -1,10 +1,12 @@
 models:
   Journey:
-    uuid
-    name: string
-    relationships:
+    id: uuid
+    relationships: string
+    columns:
+      name: string
       belongsToMany: Diary
   Diary:
-    uuid
-    relationships:
+    id: uuid
+    relationships: string
+    columns:
       belongsToMany: Journey

@@ -1,8 +1,9 @@
 models:
   Repo:
-    title: string
-    softDeletestz
+    columns:
+      title: string
+      softDeletestz: string
 
 controllers:
   Repo:
-    resource
+    resource: string

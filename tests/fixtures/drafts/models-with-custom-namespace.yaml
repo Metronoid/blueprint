@@ -1,12 +1,13 @@
 models:
   Category:
-    name: string:30
-    image: string
-    parent_id: id:Category nullable
-    active: boolean default:true
-    relationships:
+    relationships: string
+    columns:
+      name: string:30
+      image: string
+      parent_id: id:Category nullable
+      active: boolean default:true
       hasMany: Category
-    softDeletes
+      softDeletes: string
 
 controllers:
   Category:

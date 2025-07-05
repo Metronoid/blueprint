@@ -186,7 +186,7 @@ return [
     'plugins' => [
         'enabled' => true,
         'paths' => [
-            // base_path('plugins'),
+            base_path('plugins'),
         ],
         'auto_discover' => true,
         'cache_manifests' => true,

@@ -3,6 +3,7 @@
 namespace Blueprint\Lexers;
 
 use Blueprint\Contracts\Lexer;
+use Blueprint\Exceptions\ValidationException;
 use Blueprint\Models\Column;
 use Blueprint\Models\Index;
 use Blueprint\Models\Model;
@@ -133,86 +134,81 @@ class ModelLexer implements Lexer
     {
         $model = new Model($name);
 
-        // Handle structured format: check if 'columns' key exists
-        $hasStructuredFormat = isset($definition['columns']) && is_array($definition['columns']);
-        
-        if ($hasStructuredFormat) {
-            // New structured format
-            $columns = $definition['columns'];
-            
-            // Handle custom traits
-            if (isset($definition['traits'])) {
-                $traits = $definition['traits'];
-                // Handle both array format and space-separated string format (due to Blueprint's dash stripping)
-                if (is_array($traits)) {
-                    foreach ($traits as $trait) {
-                        $model->addTrait($trait);
-                    }
-                } elseif (is_string($traits)) {
-                    // Split space-separated traits
-                    $traitList = array_filter(explode(' ', $traits));
-                    foreach ($traitList as $trait) {
-                        $model->addTrait(trim($trait));
-                    }
-                }
-                unset($definition['traits']);
+        // Check if this is using legacy format (has column definitions mixed with model properties)
+        $hasLegacyColumns = false;
+        foreach ($definition as $key => $value) {
+            // If we find properties that aren't model-level properties, it's legacy format
+            if (!in_array($key, ['id', 'timestamps', 'timestampstz', 'softdeletes', 'softdeletestz', 'relationships', 'traits', 'meta', 'indexes', 'columns'])) {
+                $hasLegacyColumns = true;
+                break;
             }
-            
-            // Remove columns from definition to prevent it being processed as a column
-            unset($definition['columns']);
-            
-            // Merge remaining definition properties with columns for processing
-            $columns = array_merge($definition, $columns);
-        } else {
-            // Backward compatibility: original format where everything is a column
-            $columns = $definition;
+        }
+        
+        if ($hasLegacyColumns) {
+            throw ValidationException::invalidModelFormat($name);
         }
 
-        if (isset($columns['meta']) && is_array($columns['meta'])) {
-            if (isset($columns['meta']['connection'])) {
-                $model->setDatabaseConnection($columns['meta']['connection']);
+        $columns = $definition['columns'] ?? [];
+        
+        // Handle custom traits
+        if (isset($definition['traits'])) {
+            $traits = $definition['traits'];
+            // Handle both array format and space-separated string format (due to Blueprint's dash stripping)
+            if (is_array($traits)) {
+                foreach ($traits as $trait) {
+                    $model->addTrait($trait);
+                }
+            } elseif (is_string($traits)) {
+                // Split space-separated traits
+                $traitList = array_filter(explode(' ', $traits));
+                foreach ($traitList as $trait) {
+                    $model->addTrait(trim($trait));
+                }
+            }
+        }
+
+        // Process meta configuration
+        if (isset($definition['meta']) && is_array($definition['meta'])) {
+            if (isset($definition['meta']['connection'])) {
+                $model->setDatabaseConnection($definition['meta']['connection']);
             }
 
-            if (isset($columns['meta']['table'])) {
-                $model->setTableName($columns['meta']['table']);
+            if (isset($definition['meta']['table'])) {
+                $model->setTableName($definition['meta']['table']);
             }
 
-            if (!empty($columns['meta']['pivot'])) {
+            if (!empty($definition['meta']['pivot'])) {
                 $model->setPivot();
             }
-
-            unset($columns['meta']);
         }
 
-        if (isset($columns['id'])) {
-            if ($columns['id'] === false) {
+        // Process id configuration
+        if (isset($definition['id'])) {
+            if ($definition['id'] === false) {
                 $model->disablePrimaryKey();
-                unset($columns['id']);
             }
         }
 
-        if (isset($columns['timestamps'])) {
-            if ($columns['timestamps'] === false) {
+        // Process timestamps configuration
+        if (isset($definition['timestamps'])) {
+            if ($definition['timestamps'] === false) {
                 $model->disableTimestamps();
             }
-
-            unset($columns['timestamps']);
-        } elseif (isset($columns['timestampstz'])) {
+        } elseif (isset($definition['timestampstz'])) {
             $model->enableTimestamps(true);
-            unset($columns['timestampstz']);
         }
 
-        if (isset($columns['softdeletes'])) {
+        // Process soft deletes configuration
+        if (isset($definition['softdeletes'])) {
             $model->enableSoftDeletes();
-            unset($columns['softdeletes']);
-        } elseif (isset($columns['softdeletestz'])) {
+        } elseif (isset($definition['softdeletestz'])) {
             $model->enableSoftDeletes(true);
-            unset($columns['softdeletestz']);
         }
 
-        if (isset($columns['relationships'])) {
-            if (is_array($columns['relationships'])) {
-                foreach ($columns['relationships'] as $type => $relationships) {
+        // Process relationships
+        if (isset($definition['relationships'])) {
+            if (is_array($definition['relationships'])) {
+                foreach ($definition['relationships'] as $type => $relationships) {
                     foreach (explode(',', $relationships) as $relationship) {
                         $type = self::$relationships[strtolower($type)];
                         $model->addRelationship($type, trim($relationship));
@@ -226,22 +222,22 @@ class ModelLexer implements Lexer
                     }
                 }
             }
-
-            unset($columns['relationships']);
         }
 
-        if (isset($columns['indexes'])) {
-            foreach ($columns['indexes'] as $index) {
+        // Process indexes
+        if (isset($definition['indexes'])) {
+            foreach ($definition['indexes'] as $index) {
                 $model->addIndex(new Index(key($index), array_map('trim', explode(',', current($index)))));
             }
-            unset($columns['indexes']);
         }
 
+        // Add default id column if not specified and primary key is enabled
         if (!isset($columns['id']) && $model->usesPrimaryKey()) {
             $column = $this->buildColumn('id', 'id');
             $model->addColumn($column);
         }
 
+        // Process all columns
         foreach ($columns as $name => $definition) {
             $column = $this->buildColumn($name, $definition);
             $model->addColumn($column);

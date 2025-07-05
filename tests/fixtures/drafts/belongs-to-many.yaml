@@ -1,6 +1,7 @@
 models:
   Journey:
-    name: string
-    user_id: id
     relationships:
       belongsToMany: Diary
+    columns:
+      name: string
+      user_id: id

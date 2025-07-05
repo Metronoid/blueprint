@@ -1,0 +1,21 @@
+{
+    "name": "blueprint-constraints",
+    "version": "1.0.0",
+    "description": "A powerful extension for Laravel Blueprint that adds support for column constraints and validation rules",
+    "author": "Blueprint Extensions",
+    "class": "BlueprintExtensions\\Constraints\\BlueprintConstraintsPlugin",
+    "dependencies": {
+        "laravel-shift/blueprint": "^2.0"
+    },
+    "config": {
+        "generate_database_constraints": true,
+        "generate_validation_rules": true,
+        "generate_model_mutators": false
+    },
+    "generators": [
+        "BlueprintExtensions\\Constraints\\Generators\\ConstraintsGenerator"
+    ],
+    "lexers": [
+        "BlueprintExtensions\\Constraints\\Lexers\\ConstraintsLexer"
+    ]
+} 

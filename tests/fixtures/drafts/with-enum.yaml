@@ -1,3 +1,4 @@
 models:
   Post:
-    name: enum:one,two,three
+    columns:
+      name: enum:one,two,three

@@ -1,14 +1,14 @@
 models:
   Certificate:
-    name: string
-    reference: string
-    document: string
-    expiry_date: date
-    remarks: text nullable
     relationships:
       belongsTo: \App\Certificate
       hasMany: \App\Certificate
-
+    columns:
+      name: string
+      reference: string
+      document: string
+      expiry_date: date
+      remarks: text nullable
 controllers:
   Api/Certificate:
     resource: api

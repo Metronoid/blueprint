@@ -1,7 +1,8 @@
 models:
   State:
-    name: string
-    countries_id: id foreign:country
-    country_code: string foreign:Country
-    ccid: string foreign:country.id
-    c_code: string foreign:countries.code
+    columns:
+      name: string
+      countries_id: id foreign:country
+      country_code: string foreign:Country
+      ccid: string foreign:country.id
+      c_code: string foreign:countries.code

@@ -34,15 +34,21 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'ModelOne' => [
-                    'id' => 'id',
-                    'name' => 'string nullable',
+                    'columns' => [
+                        'id' => 'id',
+                        'name' => 'string nullable',
+                    ],
                 ],
                 'ModelTwo' => [
-                    'count' => 'integer',
                     'timestamps' => 'timestamps',
+                    'columns' => [
+                        'count' => 'integer',
+                    ],
                 ],
                 'ModelThree' => [
-                    'id' => 'increments',
+                    'columns' => [
+                        'id' => 'increments',
+                    ],
                 ],
             ],
         ];
@@ -98,7 +104,9 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Model' => [
-                    'title' => 'string nullable',
+                    'columns' => [
+                        'title' => 'string nullable',
+                    ],
                 ],
             ],
         ];
@@ -176,7 +184,9 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Model' => [
-                    'title' => 'nullable',
+                    'columns' => [
+                        'title' => 'nullable',
+                    ],
                 ],
             ],
         ];
@@ -209,11 +219,13 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Model' => [
-                    'sequence' => 'unsignedbiginteger autoincrement',
-                    'content' => 'longtext',
-                    'search' => 'fulltext',
-                    'saved_at' => 'timestamptz usecurrent',
-                    'updated_at' => 'timestamptz usecurrent usecurrentOnUpdate',
+                    'columns' => [
+                        'sequence' => 'unsignedbiginteger autoincrement',
+                        'content' => 'longtext',
+                        'search' => 'fulltext',
+                        'saved_at' => 'timestamptz usecurrent',
+                        'updated_at' => 'timestamptz usecurrent usecurrentOnUpdate',
+                    ],
                 ],
             ],
         ];
@@ -260,7 +272,9 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Model' => [
-                    'column' => $definition,
+                    'columns' => [
+                        'column' => $definition,
+                    ],
                 ],
             ],
         ];
@@ -293,7 +307,9 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Model' => [
-                    'column' => $definition . ' nullable',
+                    'columns' => [
+                        'column' => $definition . ' nullable',
+                    ],
                 ],
             ],
         ];
@@ -325,7 +341,9 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Model' => [
-                    'column' => 'string:100 unique charset:utf8',
+                    'columns' => [
+                        'column' => 'string:100 unique charset:utf8',
+                    ],
                 ],
             ],
         ];
@@ -372,8 +390,10 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Model' => [
-                    'post_id' => 'foreign',
-                    'author_id' => 'foreign:user',
+                    'columns' => [
+                        'post_id' => 'foreign',
+                        'author_id' => 'foreign:user',
+                    ],
                 ],
             ],
         ];
@@ -407,11 +427,13 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Model' => [
-                    'post_id' => 'id foreign',
-                    'author_id' => 'id foreign:users',
-                    'uid' => 'id:user foreign:users.id',
-                    'cntry_id' => 'foreign:countries',
-                    'ccid' => 'foreign:countries.code',
+                    'columns' => [
+                        'post_id' => 'id foreign',
+                        'author_id' => 'id foreign:users',
+                        'uid' => 'id:user foreign:users.id',
+                        'cntry_id' => 'foreign:countries',
+                        'ccid' => 'foreign:countries.code',
+                    ],
                 ],
             ],
         ];
@@ -475,18 +497,24 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'NewModel' => [
-                    'id' => 'id',
-                    'name' => 'string nullable',
+                    'columns' => [
+                        'id' => 'id',
+                        'name' => 'string nullable',
+                    ],
                 ],
             ],
             'cache' => [
                 'CachedModelOne' => [
-                    'count' => 'integer',
                     'timestamps' => 'timestamps',
+                    'columns' => [
+                        'count' => 'integer',
+                    ],
                 ],
                 'CachedModelTwo' => [
-                    'id' => 'id',
-                    'name' => 'string nullable',
+                    'columns' => [
+                        'id' => 'id',
+                        'name' => 'string nullable',
+                    ],
                 ],
             ],
         ];
@@ -548,13 +576,15 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Subscription' => [
-                    'different_id' => 'id:user',
-                    'title' => 'string',
-                    'price' => 'float',
                     'relationships' => [
                         'belongsToMany' => 'Team',
                         'hasmany' => 'Order',
                         'hasOne' => 'Duration, Transaction:tid',
+                    ],
+                    'columns' => [
+                        'different_id' => 'id:user',
+                        'title' => 'string',
+                        'price' => 'float',
                     ],
                 ],
             ],
@@ -657,9 +687,11 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Conference' => [
-                    'venue_id' => 'unsigned bigInteger',
                     'relationships' => [
                         'belongsTo' => 'Venue, Region, \\App\\Models\\User',
+                    ],
+                    'columns' => [
+                        'venue_id' => 'unsigned bigInteger',
                     ],
                 ],
             ],
@@ -703,10 +735,12 @@ final class ModelLexerTest extends TestCase
         $tokens = [
             'models' => [
                 'Salesman' => [
-                    'customer_id' => 'id',
-                    'company_id' => 'id:Organization',
                     'relationships' => [
                         'belongsTo' => 'User:Lead, Client:Customer',
+                    ],
+                    'columns' => [
+                        'customer_id' => 'id',
+                        'company_id' => 'id:Organization',
                     ],
                 ],
             ],
@@ -809,36 +843,7 @@ final class ModelLexerTest extends TestCase
         $this->assertEquals(['400'], $postColumns['title']->attributes());
     }
 
-    /** @test */
-    public function it_maintains_backward_compatibility_with_flat_model_format(): void
-    {
-        $tokens = [
-            'models' => [
-                'Post' => [
-                    'title' => 'string:400',
-                    'content' => 'longtext',
-                    'published_at' => 'nullable timestamp',
-                    'author_id' => 'id:user',
-                ],
-            ],
-        ];
 
-        $actual = $this->subject->analyze($tokens);
-
-        $this->assertIsArray($actual['models']);
-        $this->assertCount(1, $actual['models']);
-
-        $post = $actual['models']['Post'];
-        $this->assertEquals('Post', $post->name());
-        $this->assertFalse($post->hasTraits()); // No traits in old format
-        $this->assertEquals([], $post->traits());
-
-        $postColumns = $post->columns();
-        $this->assertCount(5, $postColumns); // id, title, content, published_at, author_id
-        $this->assertEquals('title', $postColumns['title']->name());
-        $this->assertEquals('string', $postColumns['title']->dataType());
-        $this->assertEquals(['400'], $postColumns['title']->attributes());
-    }
 
     /** @test */
     public function it_parses_traits_from_string_format(): void

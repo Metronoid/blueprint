@@ -1,11 +1,12 @@
 models:
   Name:
-    softDeletes
-    id
-    timestamps
+    id: string
+    timestamps: true
+    columns:
+      softDeletes: string
 
 controllers:
   Context:
-    resource
+    resource: string
   Report:
-    invokable
+    invokable: string

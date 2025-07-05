@@ -1,10 +1,11 @@
 models:
-    Customer:
+  Customer:
+    relationships:
+      belongsToMany: Pet
+    columns:
       name: string
-      relationships:
-        belongsToMany: Pet
-
-    Pet:
+  Pet:
+    relationships:
+      belongsToMany: Customer:owner
+    columns:
       name: string
-      relationships:
-        belongsToMany: Customer:owner

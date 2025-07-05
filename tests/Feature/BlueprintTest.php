@@ -522,10 +522,12 @@ final class BlueprintTest extends TestCase
         $this->assertEquals([
             'models' => [
                 'Post' => [
-                    'title' => 'string:400',
-                    'content' => 'longtext',
-                    'published_at' => 'nullable timestamp',
-                    'author_id' => 'id:user',
+                    'columns' => [
+                        'title' => 'string:400',
+                        'content' => 'longtext',
+                        'published_at' => 'nullable timestamp',
+                        'author_id' => 'id:user',
+                    ],
                 ],
             ],
             'controllers' => [
@@ -563,10 +565,12 @@ final class BlueprintTest extends TestCase
         $expected = [
             'models' => [
                 'Post' => [
-                    'title' => 'string:400',
-                    'content' => 'longtext',
-                    'published_at' => 'nullable timestamp',
-                    'author_id' => 'id:user',
+                    'columns' => [
+                        'title' => 'string:400',
+                        'content' => 'longtext',
+                        'published_at' => 'nullable timestamp',
+                        'author_id' => 'id:user',
+                    ],
                 ],
             ],
             'controllers' => [
@@ -600,9 +604,11 @@ final class BlueprintTest extends TestCase
         $this->assertEquals([
             'models' => [
                 'Person' => [
-                    'id' => 'ulid primary',
-                    'timestamps' => 'timestamps',
-                    'company_id' => 'ulid',
+                    'id' => 'ulid',
+                    'timestamps' => true,
+                    'columns' => [
+                        'company_id' => 'ulid',
+                    ],
                 ],
             ],
         ], $this->subject->parse($blueprint));
@@ -616,9 +622,11 @@ final class BlueprintTest extends TestCase
         $this->assertEquals([
             'models' => [
                 'Person' => [
-                    'id' => 'uuid primary',
-                    'timestamps' => 'timestamps',
-                    'company_id' => 'uuid',
+                    'id' => 'uuid',
+                    'timestamps' => true,
+                    'columns' => [
+                        'company_id' => 'uuid',
+                    ],
                 ],
             ],
         ], $this->subject->parse($blueprint));
@@ -632,8 +640,10 @@ final class BlueprintTest extends TestCase
         $expected = [
             'models' => [
                 'Post' => [
-                    'title' => 'string:400',
-                    'content' => 'longtext',
+                    'columns' => [
+                        'title' => 'string:400',
+                        'content' => 'longtext',
+                    ],
                 ],
             ],
             'controllers' => [

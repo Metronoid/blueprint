@@ -1,3 +1,4 @@
 models:
   Vat:
-    ulid: ulid
+    columns:
+      ulid: ulid

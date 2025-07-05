@@ -1,7 +1,7 @@
 models:
   Post:
-    title: string
-
+    columns:
+      title: string
 controllers:
   Api/Post:
     index:

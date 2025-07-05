@@ -1,10 +1,9 @@
 models:
   Foo:
-    name: string
-
+    columns:
+      name: string
 controllers:
-  Foo:
-    resource
+  Foo: resource
   Some:
     whatever:
       redirect: some.index

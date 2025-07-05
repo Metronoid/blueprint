@@ -1,0 +1,66 @@
+models:
+  Employee:
+    name: string:255
+    email: string:191 unique
+    salary: decimal:10,2
+    department: string:100
+    hire_date: date
+    performance_rating: integer
+    constraints:
+      salary: 
+        - min:30000
+        - max:500000
+      performance_rating:
+        - between:1,10
+      department:
+        - in:Engineering,Marketing,Sales,HR,Finance
+      hire_date:
+        - after:2020-01-01
+        - before:today
+    relationships:
+      belongsTo: Department
+
+  Department:
+    name: string:100
+    budget: decimal:12,2
+    manager_id: id foreign:employees nullable
+    constraints:
+      budget:
+        - min:10000
+        - max:10000000
+      name:
+        - length:3
+        - alpha_num
+    relationships:
+      belongsTo: Employee:manager
+      hasMany: Employee
+
+  Project:
+    name: string:200
+    budget: decimal:10,2
+    start_date: date
+    end_date: date
+    priority: integer
+    status: enum:planning,active,completed,cancelled
+    constraints:
+      budget:
+        - min:1000
+        - max:1000000
+      priority:
+        - between:1,5
+      end_date:
+        - after:start_date
+      status:
+        - in:planning,active,completed,cancelled
+    relationships:
+      belongsToMany: Employee
+
+controllers:
+  Employee:
+    resource: web
+    
+  Department:
+    resource: web
+    
+  Project:
+    resource: web 

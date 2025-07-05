@@ -154,4 +154,22 @@ class ValidationException extends BlueprintException
 
         return $exception;
     }
+
+    public static function invalidModelFormat(string $modelName): self
+    {
+        $exception = new self(
+            "Model '{$modelName}' must use structured format with 'columns' key. Legacy format is no longer supported.",
+            3009,
+            null,
+            ['model' => $modelName],
+            [
+                "Add a 'columns:' key to your model definition",
+                'Move all column definitions under the columns key',
+                'Update model-level properties (id, timestamps, etc.) to be at the root level',
+                'Refer to the documentation for structured format examples'
+            ]
+        );
+
+        return $exception;
+    }
 } 

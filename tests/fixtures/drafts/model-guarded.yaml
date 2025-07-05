@@ -1,3 +1,4 @@
 models:
   Comment:
-    content: text
+    columns:
+      content: text

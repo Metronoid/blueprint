@@ -1,35 +1,31 @@
 models:
   Page:
-    page_name: string
-    page_slug: string
-    page_content: longtext
-    order: integer nullable
-
+    columns:
+      page_name: string
+      page_slug: string
+      page_content: longtext
+      order: integer nullable
   File:
-    file_name: string
-    file_path: text
     relationships:
       belongsToMany: Category
-
+    columns:
+      file_name: string
+      file_path: text
   Category:
-    category_name: string
     relationships:
       belongsToMany: File
-
+    columns:
+      category_name: string
   Gallery:
-    gallery_name: string
-    images: longtext
-    order: integer nullable
-
+    columns:
+      gallery_name: string
+      images: longtext
+      order: integer nullable
 controllers:
-  Page:
-    resource
-
+  Page: resource
   File:
     resource: api.store, api.show, api.update
-
   Category:
     resource: index, api.destroy
-
   Gallery:
     resource: api

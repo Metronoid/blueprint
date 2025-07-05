@@ -1,7 +1,7 @@
 models:
   Comment:
-    id
-    user_id: id foreign:users.id nullable
-    integer: integer foreign:monsteras.id nullable
-    timestamps
-    
+    id: string
+    timestamps: true
+    columns:
+      user_id: id foreign:users.id nullable
+      integer: integer foreign:monsteras.id nullable

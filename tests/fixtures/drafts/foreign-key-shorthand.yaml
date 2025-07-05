@@ -1,5 +1,6 @@
 models:
   Comment:
-    post_id: foreign
-    author_id: foreign:user
-    ccid: foreign:countries.code
+    columns:
+      post_id: foreign
+      author_id: foreign:user
+      ccid: foreign:countries.code

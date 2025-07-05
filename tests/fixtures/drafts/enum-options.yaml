@@ -1,4 +1,5 @@
 models:
   Message:
-    type: enum:SMS,Email,Push
-    name: enum:1,"Jason McCreary",O'Brein,4 nullable
+    columns:
+      type: enum:SMS,Email,Push
+      name: enum:1,"Jason McCreary",O'Brein,4 nullable

@@ -37,7 +37,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Blueprint\\": "src/"
+            "Blueprint\\": "src/",
+            "BlueprintExtensions\\Constraints\\": "plugins/blueprint-constraints/src/"
         }
     },
     "autoload-dev": {

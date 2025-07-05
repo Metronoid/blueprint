@@ -1,0 +1,40 @@
+models:
+  Product:
+    name: string:255
+    price: decimal:8,2 min:0.01 max:10000
+    quantity: integer min:0 max:1000
+    rating: integer between:1,5
+    status: enum:active,inactive,discontinued in:active,inactive,discontinued
+    sku: string:50 regex:^[A-Z]{3}-\d{4}$
+    email: string:191 unique email
+    website: string:255 url
+    age: integer min:13 max:120
+    description: text
+    category_id: id foreign:categories
+    relationships:
+      belongsTo: Category
+
+  Category:
+    name: string:100
+    slug: string:100 alpha_num
+    is_active: boolean
+    sort_order: integer min:0
+
+  User:
+    name: string:255
+    email: string:191 unique email
+    age: integer min:13 max:120
+    phone: string:20 regex:^\+?[1-9]\d{1,14}$
+    website: string:255 url
+    ip_address: string:45 ip
+    preferences: json
+    birth_date: date before:today
+    relationships:
+      hasMany: Order
+
+controllers:
+  Product:
+    resource: web
+
+  Category:
+    resource: web 

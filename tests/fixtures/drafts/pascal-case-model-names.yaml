@@ -1,10 +1,11 @@
 models:
   Broker:
-    name: string
     relationships:
       belongsToMany: BrokerType
-
+    columns:
+      name: string
   BrokerType:
-    name: string
     relationships:
       belongsToMany: Broker
+    columns:
+      name: string

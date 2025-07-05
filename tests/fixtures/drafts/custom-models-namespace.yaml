@@ -1,9 +1,10 @@
 models:
   Tag:
-    name: string:50
-    icon: string nullable
-    active: boolean default:true
-    softDeletes
+    columns:
+      name: string:50
+      icon: string nullable
+      active: boolean default:true
+      softDeletes: string
 
 controllers:
   Tag:

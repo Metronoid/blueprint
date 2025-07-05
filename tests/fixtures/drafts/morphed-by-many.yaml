@@ -1,5 +1,6 @@
 models:
   Tag:
-    name: string
     relationships:
       morphedByMany: Video
+    columns:
+      name: string

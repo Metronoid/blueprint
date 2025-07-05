@@ -1,15 +1,16 @@
 models:
   Post:
-    name: string
     relationships:
       morphToMany: Tag
-
+    columns:
+      name: string
   Video:
-    name: string
     relationships:
       morphToMany: Tag
-
+    columns:
+      name: string
   Tag:
-    name: string
     relationships:
       morphedByMany: Post, Video
+    columns:
+      name: string

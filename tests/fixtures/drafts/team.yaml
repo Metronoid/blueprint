@@ -1,4 +1,5 @@
 models:
   Team:
-    name: string
-    owner_id: id:user
+    columns:
+      name: string
+      owner_id: id:user

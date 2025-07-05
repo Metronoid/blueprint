@@ -1,14 +1,13 @@
 models:
   Admin/User:
-    name: string
-    password: string
-
+    columns:
+      name: string
+      password: string
 controllers:
   Admin/User:
     index:
       query: all
       render: admin.user.index with:users
-
     store:
       validate: name
       save: user

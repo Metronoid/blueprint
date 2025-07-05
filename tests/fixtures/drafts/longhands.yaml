@@ -1,14 +1,14 @@
 models:
   Proper:
     id: true
-    softDeletes: true
     timestamps: true
-
+    columns:
+      softDeletes: true
   Lower:
     id: id
     softdeletes: true
     timestampstz: true
-
   Timezone:
     softdeletestz: true
-    timestampsTz: true
+    columns:
+      timestampsTz: true

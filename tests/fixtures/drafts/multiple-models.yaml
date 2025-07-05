@@ -1,6 +1,7 @@
 models:
   Post:
-    title: string
-
+    columns:
+      title: string
   Comment:
-    content: text
+    columns:
+      content: text

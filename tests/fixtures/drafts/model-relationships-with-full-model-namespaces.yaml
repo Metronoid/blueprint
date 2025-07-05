@@ -1,8 +1,9 @@
 models:
   Recurrency:
-    user_id: id
-    product_id: uuid
     relationships:
       belongsToMany: \Some\Package\Team
       hasMany: \Other\Package\Order
       hasOne: \Other\Package\Duration, \App\MyCustom\Folder\Transaction
+    columns:
+      user_id: id
+      product_id: uuid

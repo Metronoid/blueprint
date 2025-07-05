@@ -1,4 +1,5 @@
 models:
   Post:
-    title: string
-    content: fullText
+    columns:
+      title: string
+      content: fullText

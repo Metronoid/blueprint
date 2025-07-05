@@ -1,13 +1,15 @@
 models:
   Post:
-    title: string
-    body: text
     relationships:
       hasMany: comment
+    columns:
+      title: string
+      body: text
   Comment:
-    body: text
     relationships:
       belongsTo: post
+    columns:
+      body: text
 controllers:
   Comment:
     resource: api

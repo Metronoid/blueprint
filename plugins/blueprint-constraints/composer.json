@@ -1,0 +1,48 @@
+{
+    "name": "blueprint-extensions/constraints",
+    "description": "Blueprint extension for adding column constraints and validation rules",
+    "type": "blueprint-plugin",
+    "license": "MIT",
+    "keywords": ["blueprint-plugin", "laravel", "constraints", "validation"],
+    "authors": [
+        {
+            "name": "Blueprint Extensions",
+            "email": "extensions@blueprint.dev"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^10.0|^11.0|^12.0",
+        "laravel-shift/blueprint": "^2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "BlueprintExtensions\\Constraints\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BlueprintExtensions\\Constraints\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "BlueprintExtensions\\Constraints\\BlueprintConstraintsServiceProvider"
+            ]
+        },
+        "blueprint-plugin": {
+            "class": "BlueprintExtensions\\Constraints\\BlueprintConstraintsPlugin",
+            "config": {
+                "generate_database_constraints": true,
+                "generate_validation_rules": true,
+                "generate_model_mutators": false
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+} 

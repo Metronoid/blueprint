@@ -1,11 +1,13 @@
 models:
   Journey:
-    ulid
-    name: string
-    user_id: ulid foreign
-    relationships:
+    id: ulid
+    relationships: string
+    columns:
+      name: string
+      user_id: ulid foreign
       belongsToMany: Diary
   Diary:
-    ulid
-    relationships:
+    id: ulid
+    relationships: string
+    columns:
       belongsToMany: Journey

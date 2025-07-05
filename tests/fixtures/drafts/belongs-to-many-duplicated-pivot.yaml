@@ -1,9 +1,11 @@
 models:
   Company:
-    name: string
     relationships:
       belongsToMany: Person
+    columns:
+      name: string
   Person:
-    name: string
     relationships:
       belongsToMany: Company
+    columns:
+      name: string

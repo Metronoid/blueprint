@@ -4,5 +4,6 @@ models:
       connection: read-only
       pivot: true
       table: post
-    title: string:400
-    content: text
+    columns:
+      title: string:400
+      content: text

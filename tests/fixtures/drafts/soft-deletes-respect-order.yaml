@@ -1,5 +1,6 @@
 models:
   Comment:
-    title: string
-    softdeletes
-    name: string
+    softdeletes: true
+    columns:
+      title: string
+      name: string

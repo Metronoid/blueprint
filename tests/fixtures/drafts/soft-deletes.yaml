@@ -1,4 +1,5 @@
 models:
   Comment:
-    post_id: id
-    softdeletes
+    columns:
+      post_id: id
+    softdeletes: true
