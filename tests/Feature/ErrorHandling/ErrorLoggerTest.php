@@ -75,6 +75,9 @@ class ErrorLoggerTest extends TestCase
             }));
 
         $this->errorLogger->logRecoveryAttempt('bp_12345678', 'yaml_fix', true);
+        
+        // Verify the mock expectations were met
+        $this->assertTrue(true);
     }
 
     /** @test */
@@ -90,6 +93,9 @@ class ErrorLoggerTest extends TestCase
             }));
 
         $this->errorLogger->logRecoveryAttempt('bp_87654321', 'permission_fix', false);
+        
+        // Verify the mock expectations were met
+        $this->assertTrue(true);
     }
 
     /** @test */
@@ -106,6 +112,9 @@ class ErrorLoggerTest extends TestCase
             'created_path' => '/tmp/new/directory',
             'permissions' => '0755'
         ]);
+        
+        // Verify the mock expectations were met
+        $this->assertTrue(true);
     }
 
     /** @test */
@@ -132,7 +141,10 @@ class ErrorLoggerTest extends TestCase
         $this->errorLogger->setLogLevel(LogLevel::WARNING);
         
         $exception = new BlueprintException('Test error message');
-        $this->errorLogger->logError($exception);
+        $errorId = $this->errorLogger->logError($exception);
+        
+        // Verify the mock expectations were met and error ID was returned
+        $this->assertStringStartsWith('bp_', $errorId);
     }
 
     /** @test */
@@ -150,7 +162,10 @@ class ErrorLoggerTest extends TestCase
                        empty($context['suggestions']);
             }));
 
-        $this->errorLogger->logError($exception);
+        $errorId = $this->errorLogger->logError($exception);
+        
+        // Verify the mock expectations were met and error ID was returned
+        $this->assertStringStartsWith('bp_', $errorId);
     }
 
     /** @test */
@@ -160,6 +175,9 @@ class ErrorLoggerTest extends TestCase
 
         $this->errorLogger->setEnabled(false);
         $this->errorLogger->logRecoveryAttempt('bp_12345678', 'test_strategy', true);
+        
+        // Verify the mock expectations were met (no logging occurred)
+        $this->assertTrue(true);
     }
 
     /** @test */

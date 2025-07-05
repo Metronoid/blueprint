@@ -77,12 +77,27 @@ class RecoveryManagerTest extends TestCase
         $result = $this->manager->attemptRecovery($exception);
 
         $this->assertFalse($result->isSuccessful());
-        // The recovery will fail because the directory doesn't exist or isn't writable
-        $this->assertTrue(
-            str_contains($result->getMessage(), 'Directory does not exist') ||
-            str_contains($result->getMessage(), 'Directory is not writable') ||
-            str_contains($result->getMessage(), 'Failed to create directory')
-        );
+        // Since multiple strategies are tried and all fail, the final message is generic
+        $this->assertStringContainsString('No recovery strategies succeeded', $result->getMessage());
+    }
+
+    /** @test */
+    public function it_returns_specific_error_for_nonexistent_directory()
+    {
+        // Test the file permission strategy specifically by creating a mock that only has permission context
+        $exception = new GenerationException('Permission denied');
+        $exception->addContext('permission_error', true);
+        $exception->setFilePath('/nonexistent/path/file.php');
+
+        // Get the file permission strategy directly to test its specific behavior
+        $reflection = new \ReflectionClass($this->manager);
+        $method = $reflection->getMethod('recoverFilePermissions');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->manager, $exception);
+
+        $this->assertFalse($result->isSuccessful());
+        $this->assertStringContainsString('Directory does not exist', $result->getMessage());
     }
 
     /** @test */
