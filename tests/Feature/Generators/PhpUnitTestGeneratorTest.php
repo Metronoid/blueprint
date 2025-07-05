@@ -133,13 +133,20 @@ final class PhpUnitTestGeneratorTest extends TestCase
             ->with('tests/Feature/Http/Controllers/UserControllerTest.php', $this->fixture('tests/phpunit/reference-cache.php'));
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/reference-cache.yaml'));
-        $tokens['cache'] = [
-            'User' => [
-                'email' => 'string',
-                'password' => 'string',
+        $modelTokens = [
+            'models' => [
+                'User' => [
+                    'columns' => [
+                        'email' => 'string',
+                        'password' => 'string',
+                    ],
+                ],
             ],
         ];
-        $tree = $this->blueprint->analyze($tokens);
+        $tree = $this->blueprint->analyze(array_merge($tokens, $modelTokens))->toArray();
+        $tree['cache'] = $tree['models'];
+        unset($tree['models']);
+        $tree = new \Blueprint\Tree($tree);
 
         $this->assertEquals(['created' => ['tests/Feature/Http/Controllers/UserControllerTest.php']], $this->subject->output($tree));
     }

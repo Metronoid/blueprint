@@ -1,0 +1,24 @@
+models:
+  Post:
+    columns:
+      title: string:400
+      content: longtext
+      rating: decimal:4,2
+      count: decimal:8 unsigned
+      published_at: nullable timestamp
+  Other:
+    columns:
+      field: string
+      text: text
+controllers:
+  Post:
+    index:
+      validate: post.title
+      render: post.index with:posts
+    store:
+      validate: title, content, rating, count
+      redirect: posts.index
+  Other:
+    store:
+      validate: other.field, other.text
+      redirect: posts.index 

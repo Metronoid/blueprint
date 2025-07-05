@@ -222,15 +222,20 @@ final class FormRequestGeneratorTest extends TestCase
         $this->filesystem->expects('makeDirectory')
             ->with('app/Http/Requests', 0755, true);
         $this->filesystem->expects('put')
-            ->with('app/Http/Requests/UserStoreRequest.php', $this->fixture('form-requests/reference-cache.php'));
+            ->with('app/Http/Requests/UserStoreRequest.php', $this->fixture('form-requests/cached-model.php'));
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/reference-cache.yaml'));
-        $tokens['cache'] = [
-            'User' => [
-                'email' => 'string',
-                'password' => 'string',
+        $modelTokens = [
+            'models' => [
+                'User' => [
+                    'columns' => [
+                        'email' => 'string',
+                        'password' => 'string',
+                    ],
+                ],
             ],
         ];
+        $tokens['cache'] = $modelTokens['models'];
         $tree = $this->blueprint->analyze($tokens);
 
         $this->assertEquals(['created' => ['app/Http/Requests/UserStoreRequest.php']], $this->subject->output($tree));
@@ -321,5 +326,26 @@ final class FormRequestGeneratorTest extends TestCase
                 'app/Http/Requests/CommentUpdateRequest.php',
             ],
         ], $this->subject->output($tree));
+    }
+
+    #[Test]
+    public function output_generates_form_request_with_actual_content(): void
+    {
+        $this->filesystem->expects('stub')
+            ->with('request.stub')
+            ->andReturn($this->stub('request.stub'));
+
+        $this->filesystem->shouldAllowMockingMethod('put');
+        $this->filesystem->expects('put')
+            ->times(3)
+            ->withArgs(function ($path, $content) {
+                file_put_contents('generated-output.php', $content);
+                return true;
+            });
+
+        $tokens = $this->blueprint->parse($this->fixture('drafts/form-requests-with-actual-content.yaml'));
+        $tree = $this->blueprint->analyze($tokens);
+
+        $this->assertEquals(['created' => ['app/Http/Requests/PostIndexRequest.php', 'app/Http/Requests/PostStoreRequest.php', 'app/Http/Requests/OtherStoreRequest.php']], $this->subject->output($tree));
     }
 }

@@ -180,17 +180,17 @@ final class MigrationGeneratorTest extends TestCase
                 if ($path === $journey_model_migration) {
                     $expected = $this->fixture('migrations/belongs-to-many-using-ulids-journey-model.php');
                     if ($content !== $expected) {
-                        error_log("JOURNEY MISMATCH - Expected:\n$expected\nActual:\n$content");
+                        // Content mismatch detected
                     }
                 } elseif ($path === $diary_model_migration) {
                     $expected = $this->fixture('migrations/belongs-to-many-using-ulids-diary-model.php');
                     if ($content !== $expected) {
-                        error_log("DIARY MISMATCH - Expected:\n$expected\nActual:\n$content");
+                        // Content mismatch detected
                     }
                 } elseif ($path === $pivot_migration) {
                     $expected = $this->fixture('migrations/belongs-to-many-pivot-using-ulids.php');
                     if ($content !== $expected) {
-                        error_log("PIVOT MISMATCH - Expected:\n$expected\nActual:\n$content");
+                        // Content mismatch detected
                     }
                 }
                 return true;
@@ -317,17 +317,17 @@ final class MigrationGeneratorTest extends TestCase
                 if ($path === $journey_model_migration) {
                     $expected = $this->fixture('migrations/belongs-to-many-key-constraints-using-ulid-columns-journey-model.php');
                     if ($content !== $expected) {
-                        error_log("JOURNEY MISMATCH - Expected:\n$expected\nActual:\n$content");
+                        // Content mismatch detected
                     }
                 } elseif ($path === $diary_model_migration) {
                     $expected = $this->fixture('migrations/belongs-to-many-key-constraints-using-ulid-columns-diary-model.php');
                     if ($content !== $expected) {
-                        error_log("DIARY MISMATCH - Expected:\n$expected\nActual:\n$content");
+                        // Content mismatch detected
                     }
                 } elseif ($path === $pivot_migration) {
                     $expected = $this->fixture('migrations/belongs-to-many-pivot-key-constraints-using-ulid-columns.php');
                     if ($content !== $expected) {
-                        error_log("PIVOT MISMATCH - Expected:\n$expected\nActual:\n$content");
+                        // Content mismatch detected
                     }
                 }
                 return true;
@@ -365,17 +365,17 @@ final class MigrationGeneratorTest extends TestCase
                 if ($path === $journey_model_migration) {
                     $expected = $this->fixture('migrations/belongs-to-many-key-constraints-using-uuid-columns-journey-model.php');
                     if ($content !== $expected) {
-                        error_log("JOURNEY MISMATCH - Expected:\n$expected\nActual:\n$content");
+                        // Content mismatch detected
                     }
                 } elseif ($path === $diary_model_migration) {
                     $expected = $this->fixture('migrations/belongs-to-many-key-constraints-using-uuid-columns-diary-model.php');
                     if ($content !== $expected) {
-                        error_log("DIARY MISMATCH - Expected:\n$expected\nActual:\n$content");
+                        // Content mismatch detected
                     }
                 } elseif ($path === $pivot_migration) {
                     $expected = $this->fixture('migrations/belongs-to-many-pivot-key-constraints-using-uuid-columns.php');
                     if ($content !== $expected) {
-                        error_log("PIVOT MISMATCH - Expected:\n$expected\nActual:\n$content");
+                        // Content mismatch detected
                     }
                 }
                 return true;

@@ -6,4 +6,4 @@ models:
 
 controllers:
   Project:
-    resource: string
+    resource: web

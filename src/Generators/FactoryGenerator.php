@@ -32,7 +32,6 @@ class FactoryGenerator extends AbstractClassGenerator implements Generator
             $this->addImport($model, $model->fullyQualifiedClassName());
 
             $path = $this->getPath($model);
-
             $this->create($path, $this->populateStub($stub, $model));
         }
 
@@ -74,6 +73,14 @@ class FactoryGenerator extends AbstractClassGenerator implements Generator
             }
 
             if (Str::startsWith($column->dataType(), 'nullable')) {
+                continue;
+            }
+
+            if (
+                (in_array($column->dataType(), ['morphs', 'ulidMorphs', 'uuidMorphs']) && $column->isNullable()) ||
+                (Str::startsWith($column->name(), 'nullable') && in_array($column->dataType(), ['morphs', 'ulidMorphs', 'uuidMorphs'])) ||
+                (Str::startsWith($column->dataType(), 'nullable') && Str::endsWith($column->dataType(), 'Morphs'))
+            ) {
                 continue;
             }
 
@@ -198,7 +205,7 @@ class FactoryGenerator extends AbstractClassGenerator implements Generator
 
         $nonNullableColumns = array_filter(
             $columns,
-            fn (Column $column) => !in_array('nullable', $column->modifiers())
+            fn (Column $column) => !in_array('nullable', $column->modifiers()) || in_array($column->dataType(), ['json', 'jsonb'])
         );
 
         return array_filter(
@@ -210,5 +217,21 @@ class FactoryGenerator extends AbstractClassGenerator implements Generator
     private function fullyQualifyModelReference(string $model_name)
     {
         return $this->tree->modelForContext($model_name);
+    }
+
+    protected function buildImports(Model $model): string
+    {
+        // Always include the model import first
+        $imports = [$model->fullyQualifiedClassName()];
+        foreach ($this->imports[$model->name()] ?? [] as $import) {
+            if ($import !== $model->fullyQualifiedClassName()) {
+                $imports[] = $import;
+            }
+        }
+        sort($imports);
+        $imports = array_unique($imports);
+        return collect($imports)
+            ->map(fn($import) => 'use ' . $import . ';')
+            ->implode("\n");
     }
 }

@@ -134,19 +134,7 @@ class ModelLexer implements Lexer
     {
         $model = new Model($name);
 
-        // Get columns from 'columns' key or treat the whole definition as columns for cached models
         $columns = $definition['columns'] ?? [];
-        
-        // For cached models (simple key-value pairs), treat the entire definition as columns
-        // unless it contains known model-level keys
-        $modelLevelKeys = ['id', 'timestamps', 'timestampstz', 'softdeletes', 'softdeletestz', 'relationships', 'traits', 'meta', 'indexes', 'columns'];
-        
-        // Also process top-level keys that are not model-level properties as columns
-        foreach ($definition as $key => $value) {
-            if (!in_array($key, $modelLevelKeys) && is_string($value) && !isset($columns[$key])) {
-                $columns[$key] = $value;
-            }
-        }
 
         // Handle custom traits
         if (isset($definition['traits'])) {
@@ -276,6 +264,15 @@ class ModelLexer implements Lexer
     {
         $data_type = null;
         $modifiers = [];
+        $attributes = [];
+
+        // Normalize nullableXxxMorphs columns
+        if (preg_match('/^nullable([A-Z][a-zA-Z0-9]*)Morphs$/', $name, $matches) || preg_match('/^nullable([A-Z][a-zA-Z0-9]*)Morphs$/', $definition, $matches)) {
+            $type = lcfirst($matches[1]) . 'Morphs';
+            $data_type = $type;
+            $modifiers[] = 'nullable';
+            return new Column($name, $data_type, $modifiers, $attributes);
+        }
 
         $tokens = $this->parseColumn($definition);
         foreach ($tokens as $token) {
@@ -304,7 +301,7 @@ class ModelLexer implements Lexer
                 if (is_null($modifierAttributes)) {
                     $modifiers[] = self::$modifiers[strtolower($value)];
                 } else {
-                    $modifiers[] = [self::$modifiers[strtolower($value)] => preg_replace('~^[\'"]?(.*?)[\'"]?$~', '$1', $modifierAttributes)];
+                    $modifiers[] = [self::$modifiers[strtolower($value)] => preg_replace('~^[\'\"]?(.*?)[\'\"]?$~', '$1', $modifierAttributes)];
                 }
             }
         }

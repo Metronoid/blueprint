@@ -6,4 +6,4 @@ models:
 
 controllers:
   Repo:
-    resource: string
+    resource: web

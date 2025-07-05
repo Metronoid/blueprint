@@ -54,16 +54,17 @@ final class FactoryGeneratorTest extends TestCase
             ->andReturn($this->stub($this->factoryStub));
 
         $this->filesystem->expects('exists')
-            ->with('database/factories')
-            ->andReturnTrue();
+            ->andReturn(true);
 
+        $actualContent = null;
         $this->filesystem->expects('put')
-            ->with($path, $this->fixture($factory));
+            ->with($path, \Mockery::capture($actualContent));
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
 
         $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertSame($this->fixture($factory), $actualContent);
     }
 
     #[Test]
