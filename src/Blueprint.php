@@ -370,8 +370,10 @@ class Blueprint
                     throw ValidationException::invalidColumnDefinition($columnName, $modelName, 'Column name must be a non-empty string');
                 }
 
-                if (!preg_match('/^[a-z][a-z0-9_]*$/', $columnName)) {
-                    throw ValidationException::invalidColumnDefinition($columnName, $modelName, 'Column name must start with lowercase letter and contain only letters, numbers, and underscores');
+                // Be more lenient with column name validation to allow Laravel column types and relationship types
+                // The ModelLexer will handle these appropriately
+                if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $columnName)) {
+                    throw ValidationException::invalidColumnDefinition($columnName, $modelName, 'Column name must start with a letter and contain only letters, numbers, and underscores');
                 }
             }
         }
@@ -385,8 +387,14 @@ class Blueprint
     /**
      * Validate relationships in model definition.
      */
-    private function validateRelationships(string $modelName, array $relationships, ?string $filePath): void
+    private function validateRelationships(string $modelName, array|string $relationships, ?string $filePath): void
     {
+        // Handle case where relationships is a string (e.g., "relationships: string")
+        if (is_string($relationships)) {
+            // Skip validation for string relationships - they'll be handled by the lexer
+            return;
+        }
+        
         $validRelationshipTypes = ['hasOne', 'hasMany', 'belongsTo', 'belongsToMany'];
 
         foreach ($relationships as $relationshipName => $relationshipDef) {

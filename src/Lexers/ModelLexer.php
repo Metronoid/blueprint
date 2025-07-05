@@ -134,22 +134,22 @@ class ModelLexer implements Lexer
     {
         $model = new Model($name);
 
-        // Check if this is using legacy format (has column definitions mixed with model properties)
-        $hasLegacyColumns = false;
-        foreach ($definition as $key => $value) {
-            // If we find properties that aren't model-level properties, it's legacy format
-            if (!in_array($key, ['id', 'timestamps', 'timestampstz', 'softdeletes', 'softdeletestz', 'relationships', 'traits', 'meta', 'indexes', 'columns'])) {
-                $hasLegacyColumns = true;
-                break;
-            }
-        }
-        
-        if ($hasLegacyColumns) {
-            throw ValidationException::invalidModelFormat($name);
-        }
-
+        // Get columns from 'columns' key or treat the whole definition as columns for cached models
         $columns = $definition['columns'] ?? [];
         
+        // For cached models (simple key-value pairs), treat the entire definition as columns
+        // unless it contains known model-level keys
+        $modelLevelKeys = ['id', 'timestamps', 'timestampstz', 'softdeletes', 'softdeletestz', 'relationships', 'traits', 'meta', 'indexes', 'columns'];
+        
+        if (empty($columns)) {
+            // This might be a cached model - extract column definitions
+            foreach ($definition as $key => $value) {
+                if (!in_array($key, $modelLevelKeys) && is_string($value)) {
+                    $columns[$key] = $value;
+                }
+            }
+        }
+
         // Handle custom traits
         if (isset($definition['traits'])) {
             $traits = $definition['traits'];
@@ -186,6 +186,9 @@ class ModelLexer implements Lexer
         if (isset($definition['id'])) {
             if ($definition['id'] === false) {
                 $model->disablePrimaryKey();
+            } elseif (is_string($definition['id'])) {
+                // Handle id type specification (e.g., 'uuid', 'ulid')
+                $columns['id'] = $definition['id'];
             }
         }
 
@@ -237,8 +240,31 @@ class ModelLexer implements Lexer
             $model->addColumn($column);
         }
 
-        // Process all columns
+        // Process all columns, but filter out special cases that shouldn't be treated as columns
         foreach ($columns as $name => $definition) {
+            // Skip columns that are actually relationship types
+            if (in_array(strtolower($name), array_keys(self::$relationships))) {
+                // This is a relationship definition in the wrong place, handle it as a relationship
+                $relationshipType = self::$relationships[strtolower($name)];
+                $model->addRelationship($relationshipType, $definition);
+                continue;
+            }
+            
+            // Skip columns that are actually model-level properties
+            if (in_array(strtolower($name), ['softdeletes', 'softdeletestz', 'timestamps', 'timestampstz'])) {
+                // Handle these as model-level properties
+                if (strtolower($name) === 'softdeletes') {
+                    $model->enableSoftDeletes();
+                } elseif (strtolower($name) === 'softdeletestz') {
+                    $model->enableSoftDeletes(true);
+                } elseif (strtolower($name) === 'timestamps') {
+                    // timestamps are enabled by default
+                } elseif (strtolower($name) === 'timestampstz') {
+                    $model->enableTimestamps(true);
+                }
+                continue;
+            }
+            
             $column = $this->buildColumn($name, $definition);
             $model->addColumn($column);
         }

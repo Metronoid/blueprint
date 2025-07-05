@@ -31,6 +31,15 @@ class ControllerLexer implements Lexer
         foreach ($tokens['controllers'] as $name => $definition) {
             $controller = new Controller($name);
 
+            // Handle case where definition is a string (e.g., "Foo: resource")
+            if (is_string($definition)) {
+                if ($definition === 'resource') {
+                    $definition = ['resource' => 'web'];
+                } else {
+                    $definition = ['resource' => $definition];
+                }
+            }
+
             if (isset($definition['resource'])) {
                 $resource_methods = $this->methodsForResource($definition['resource']);
                 $resource_definition = $this->generateResourceTokens($controller, $resource_methods);
