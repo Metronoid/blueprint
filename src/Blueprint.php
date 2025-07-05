@@ -28,7 +28,7 @@ class Blueprint
 
     public static function relativeNamespace(string $fullyQualifiedClassName): string
     {
-        $namespace = config('blueprint.namespace') . '\\';
+        $namespace = config('blueprint.namespace', 'App') . '\\';
         $reference = ltrim($fullyQualifiedClassName, '\\');
 
         if (Str::startsWith($reference, $namespace)) {
@@ -40,7 +40,7 @@ class Blueprint
 
     public static function appPath()
     {
-        return str_replace('\\', '/', config('blueprint.app_path'));
+        return str_replace('\\', '/', config('blueprint.app_path', 'app'));
     }
 
     public function parse($content, $strip_dashes = true, ?string $filePath = null)

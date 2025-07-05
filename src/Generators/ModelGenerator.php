@@ -25,8 +25,8 @@ class ModelGenerator extends AbstractClassGenerator implements Generator
          */
         foreach ($tree->models() as $model) {
             $path = $this->getPath($model);
-
-            $this->create($path, $this->populateStub($stub, $model));
+            $content = $this->populateStub($stub, $model);
+            $this->create($path, $content);
         }
 
         return $this->output;
@@ -60,7 +60,7 @@ class ModelGenerator extends AbstractClassGenerator implements Generator
 
     protected function buildClassPhpDoc(Model $model): string
     {
-        if (!config('blueprint.generate_phpdocs')) {
+        if (!config('blueprint.generate_phpdocs', false)) {
             return '';
         }
 
@@ -197,7 +197,7 @@ class ModelGenerator extends AbstractClassGenerator implements Generator
             $properties[] = $this->filesystem->stub('model.incrementing.stub');
         }
 
-        if (config('blueprint.use_guarded')) {
+        if (config('blueprint.use_guarded', false)) {
             $properties[] = $this->filesystem->stub('model.guarded.stub');
         } else {
             $columns = $this->fillableColumns($model->columns());
@@ -213,7 +213,7 @@ class ModelGenerator extends AbstractClassGenerator implements Generator
             $properties[] = str_replace('[]', $this->pretty_print_array($columns, false), $this->filesystem->stub('model.hidden.stub'));
         }
 
-        $columns = $this->castableColumns($model->columns());
+        $columns = $this->castableColumns($model->columns(), $model);
         if (!empty($columns)) {
             $properties[] = str_replace('[]', $this->pretty_print_array($columns, indent: 8), $this->filesystem->stub('model.casts.stub'));
         }
@@ -261,14 +261,29 @@ class ModelGenerator extends AbstractClassGenerator implements Generator
         );
     }
 
-    protected function castableColumns(array $columns): array
+    protected function castableColumns(array $columns, $model = null): array
     {
-        return array_filter(
-            array_map(
-                fn (Column $column) => $this->castForColumn($column),
-                $columns
-            )
-        );
+        $result = [];
+        foreach ($columns as $name => $column) {
+            // Only cast 'id' if it is the primary key and not uuid/ulid
+            if ($name === 'id') {
+                if ($model && $model->usesPrimaryKey() && $model->primaryKey() === 'id') {
+                    $type = strtolower($column->dataType());
+                    if (!in_array($type, ['uuid', 'ulid'])) {
+                        $cast = $this->castForColumn($column);
+                        if ($cast !== null) {
+                            $result[$name] = $cast;
+                        }
+                    }
+                }
+                continue;
+            }
+            $cast = $this->castForColumn($column);
+            if ($cast !== null) {
+                $result[$name] = $cast;
+            }
+        }
+        return $result;
     }
 
     private function castForColumn(Column $column): ?string
@@ -285,7 +300,12 @@ class ModelGenerator extends AbstractClassGenerator implements Generator
             return 'timestamp';
         }
 
-        if (stripos($column->dataType(), 'integer') || in_array($column->dataType(), ['id', 'foreign'])) {
+        $integerTypes = [
+            'id', 'foreign', 'biginteger', 'unsignedbiginteger', 'smallinteger', 'unsignedinteger',
+            'unsignedmediuminteger', 'unsignedsmallinteger', 'unsignedtinyinteger', 'mediuminteger',
+            'tinyinteger', 'year', 'increments', 'bigincrements', 'mediumincrements', 'smallincrements', 'tinyincrements'
+        ];
+        if (in_array(strtolower($column->dataType()), $integerTypes) || ($column->name() === 'id' && !in_array($column->dataType(), ['uuid', 'ulid']))) {
             return 'integer';
         }
 

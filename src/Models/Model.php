@@ -57,10 +57,10 @@ class Model implements BlueprintModel
 
     public function fullyQualifiedNamespace(): string
     {
-        $fqn = config('blueprint.namespace');
+        $fqn = config('blueprint.namespace', 'App');
 
-        if (config('blueprint.models_namespace')) {
-            $fqn .= '\\' . config('blueprint.models_namespace');
+        if (config('blueprint.models_namespace', 'Models')) {
+            $fqn .= '\\' . config('blueprint.models_namespace', 'Models');
         }
 
         if ($this->namespace) {

@@ -100,6 +100,8 @@ class AllType extends Model
             'unsignedMediumInteger' => 'integer',
             'unsignedSmallInteger' => 'integer',
             'unsignedTinyInteger' => 'integer',
+            'year' => 'integer',
+            'id' => 'integer',
         ];
     }
 }
