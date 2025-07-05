@@ -23,6 +23,17 @@ abstract class TestCase extends \Orchestra\Testbench\TestCase
 
     protected function tearDown(): void
     {
+        // Always restore error and exception handlers to prevent leaks
+        try {
+            restore_error_handler();
+        } catch (\ErrorException $e) {
+            // Already restored
+        }
+        try {
+            restore_exception_handler();
+        } catch (\ErrorException $e) {
+            // Already restored
+        }
         parent::tearDown();
     }
 
