@@ -474,30 +474,35 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
 
     protected function createMigrations(array $tables, $overwrite = false): array
     {
-        $sequential_timestamp = \Carbon\Carbon::now()->copy()->subSeconds(
-            collect($tables['tableNames'])->merge($tables['pivotTableNames'])->merge($tables['polymorphicManyToManyTables'])->count()
-        );
+        $total_tables = collect($tables['tableNames'])->merge($tables['pivotTableNames'])->merge($tables['polymorphicManyToManyTables'])->count();
+        $sequential_timestamp = \Carbon\Carbon::now();
+        $table_counter = 0;
 
         foreach ($tables['tableNames'] as $tableName => $data) {
-            $path = $this->getTablePath($tableName, $sequential_timestamp->addSecond(), $overwrite);
+            $timestamp = $sequential_timestamp->copy()->addSeconds($table_counter);
+            $path = $this->getTablePath($tableName, $timestamp, $overwrite);
             $action = $this->filesystem->exists($path) ? 'updated' : 'created';
             $this->filesystem->put($path, $data);
             $this->output[$action][] = $path;
+            $table_counter++;
         }
 
         foreach ($tables['pivotTableNames'] as $tableName => $data) {
-            $path = $this->getTablePath($tableName, $sequential_timestamp->addSecond(), $overwrite);
+            $timestamp = $sequential_timestamp->copy()->addSeconds($table_counter);
+            $path = $this->getTablePath($tableName, $timestamp, $overwrite);
             $action = $this->filesystem->exists($path) ? 'updated' : 'created';
             $this->filesystem->put($path, $data);
-
             $this->output[$action][] = $path;
+            $table_counter++;
         }
 
         foreach ($tables['polymorphicManyToManyTables'] as $tableName => $data) {
-            $path = $this->getTablePath($tableName, $sequential_timestamp->addSecond(), $overwrite);
+            $timestamp = $sequential_timestamp->copy()->addSeconds($table_counter);
+            $path = $this->getTablePath($tableName, $timestamp, $overwrite);
             $action = $this->filesystem->exists($path) ? 'updated' : 'created';
             $this->filesystem->put($path, $data);
             $this->output[$action][] = $path;
+            $table_counter++;
         }
 
         return $this->output;

@@ -534,9 +534,7 @@ final class MigrationGeneratorTest extends TestCase
     #[Test]
     public function output_generates_constraint_for_uuid(): void
     {
-        $this->app->config->set('blueprint.use_constraints', true);
-
-        $this->filesystem->expects('stub')
+        $this->files->expects('stub')
             ->with('migration.stub')
             ->andReturn($this->stub('migration.stub'));
 
@@ -545,17 +543,23 @@ final class MigrationGeneratorTest extends TestCase
 
         $timestamp_path = 'database/migrations/' . $now->format('Y_m_d_His') . '_create_people_table.php';
 
-        $this->filesystem->expects('exists')
+        $this->files->expects('exists')
             ->with($timestamp_path)
             ->andReturn(false);
 
-        $this->filesystem->expects('put')
-            ->with($timestamp_path, $this->fixture('migrations/uuid-shorthand-constraint.php'));
+        $actual_content = null;
+        $this->files->expects('put')
+            ->with($timestamp_path, \Mockery::on(function ($content) use (&$actual_content) {
+                $actual_content = $content;
+                return true;
+            }));
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/uuid-shorthand.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => [$timestamp_path]], $this->subject->output($tree));
+        $result = $this->subject->output($tree);
+        $expected = $this->fixture('migrations/uuid-shorthand-constraint.php');
+        $this->assertEquals(['created' => [$timestamp_path]], $result);
     }
 
     #[Test]
