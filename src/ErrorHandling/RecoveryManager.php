@@ -196,10 +196,14 @@ class RecoveryManager
         }
 
         // Attempt to create directory
-        if (@mkdir($directory, 0755, true)) {
-            return new RecoveryResult(true, 'Successfully created directory', [
-                'created_directory' => $directory
-            ]);
+        try {
+            if (mkdir($directory, 0755, true)) {
+                return new RecoveryResult(true, 'Successfully created directory', [
+                    'created_directory' => $directory
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Directory creation failed, continue to return failure result
         }
 
         return new RecoveryResult(false, 'Failed to create directory', [

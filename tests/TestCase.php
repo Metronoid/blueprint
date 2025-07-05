@@ -23,27 +23,6 @@ abstract class TestCase extends \Orchestra\Testbench\TestCase
 
     protected function tearDown(): void
     {
-        // Ensure any error handlers installed during the test are cleaned up
-        // We'll try to restore a few times in case multiple handlers were installed
-        for ($i = 0; $i < 10; $i++) {
-            $currentHandler = set_error_handler(null);
-            if ($currentHandler === null) {
-                break; // No more handlers to restore
-            }
-            set_error_handler($currentHandler); // Restore the current handler
-            restore_error_handler(); // Remove one level
-        }
-        
-        // Same for exception handlers
-        for ($i = 0; $i < 10; $i++) {
-            $currentHandler = set_exception_handler(null);
-            if ($currentHandler === null) {
-                break; // No more handlers to restore
-            }
-            set_exception_handler($currentHandler); // Restore the current handler
-            restore_exception_handler(); // Remove one level
-        }
-
         parent::tearDown();
     }
 
