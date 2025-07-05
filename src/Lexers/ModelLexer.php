@@ -141,12 +141,10 @@ class ModelLexer implements Lexer
         // unless it contains known model-level keys
         $modelLevelKeys = ['id', 'timestamps', 'timestampstz', 'softdeletes', 'softdeletestz', 'relationships', 'traits', 'meta', 'indexes', 'columns'];
         
-        if (empty($columns)) {
-            // This might be a cached model - extract column definitions
-            foreach ($definition as $key => $value) {
-                if (!in_array($key, $modelLevelKeys) && is_string($value)) {
-                    $columns[$key] = $value;
-                }
+        // Also process top-level keys that are not model-level properties as columns
+        foreach ($definition as $key => $value) {
+            if (!in_array($key, $modelLevelKeys) && is_string($value) && !isset($columns[$key])) {
+                $columns[$key] = $value;
             }
         }
 

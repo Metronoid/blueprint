@@ -112,10 +112,28 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
     {
         $definition = '';
 
+        // Get all columns and preserve their order as defined in the YAML draft
+        $columns = $model->columns();
+        // If associative, preserve order as inserted (PHP >=7.0)
+        $columns = array_values($columns);
+        // Move primary key column to the top if it exists
+        $primaryKeyIndex = null;
+        foreach ($columns as $i => $column) {
+            if ($column->name() === $model->primaryKey()) {
+                $primaryKeyIndex = $i;
+                break;
+            }
+        }
+        if ($primaryKeyIndex !== null && $primaryKeyIndex !== 0) {
+            $primaryKey = $columns[$primaryKeyIndex];
+            array_splice($columns, $primaryKeyIndex, 1);
+            array_unshift($columns, $primaryKey);
+        }
+
         /**
          * @var \Blueprint\Models\Column $column
          */
-        foreach ($model->columns() as $column) {
+        foreach ($columns as $column) {
             $dataType = $column->dataType();
 
             if ($column->name() === 'id' && $dataType === 'id') {
@@ -475,7 +493,7 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
     protected function createMigrations(array $tables, $overwrite = false): array
     {
         $total_tables = collect($tables['tableNames'])->merge($tables['pivotTableNames'])->merge($tables['polymorphicManyToManyTables'])->count();
-        $sequential_timestamp = \Carbon\Carbon::now();
+        $sequential_timestamp = \Carbon\Carbon::now()->copy()->subSeconds($total_tables - 1);
         $table_counter = 0;
 
         foreach ($tables['tableNames'] as $tableName => $data) {
