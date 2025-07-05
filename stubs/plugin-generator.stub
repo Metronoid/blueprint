@@ -1,57 +1,80 @@
 <?php
 
-namespace {{ namespace }}\Generators;
+namespace {{ namespace }};
 
-use Blueprint\Contracts\PluginGenerator;
 use Blueprint\Contracts\Plugin;
-use Blueprint\Generators\AbstractClassGenerator;
+use Blueprint\Plugin\AbstractPluginGenerator;
 use Blueprint\Tree;
+use Illuminate\Filesystem\Filesystem;
 
-class {{ class }}Generator extends AbstractClassGenerator implements PluginGenerator
+class {{ class }} extends AbstractPluginGenerator
 {
+    protected int $priority = 100;
     protected array $types = ['{{ types }}'];
-    
-    private Plugin $plugin;
-    private array $config = [];
 
-    public function __construct(\Illuminate\Filesystem\Filesystem $filesystem, Plugin $plugin)
+    public function __construct(Filesystem $filesystem, Plugin $plugin)
     {
-        parent::__construct($filesystem);
-        $this->plugin = $plugin;
+        parent::__construct($filesystem, $plugin);
     }
 
+    /**
+     * Generate output for the given tree.
+     */
     public function output(Tree $tree): array
     {
-        $this->tree = $tree;
-        
-        // Your custom generation logic here
-        
-        return $this->output;
+        $output = [];
+
+        // TODO: Implement your generator logic here
+        // Example:
+        // foreach ($tree->models() as $model) {
+        //     $output['path/to/files'][] = $this->generateForModel($model);
+        // }
+
+        return $output;
     }
 
-    public function getPlugin(): Plugin
-    {
-        return $this->plugin;
-    }
-
-    public function getPriority(): int
-    {
-        return 100; // Default priority
-    }
-
+    /**
+     * Check if this generator should run for the given tree.
+     */
     public function shouldRun(Tree $tree): bool
     {
-        // Determine if this generator should run for the given tree
-        return true;
+        // TODO: Implement your custom logic here
+        // Example:
+        // return !empty($tree->models()) && $this->config('enabled', true);
+        
+        return parent::shouldRun($tree);
     }
 
-    public function getConfig(): array
+    /**
+     * Get the generator name.
+     */
+    public function getName(): string
     {
-        return $this->config;
+        return '{{ name }}';
     }
 
-    public function setConfig(array $config): void
+    /**
+     * Get the generator description.
+     */
+    public function getDescription(): string
     {
-        $this->config = $config;
+        return '{{ description }}';
     }
+
+    // TODO: Add your custom methods here
+    // Example:
+    // protected function generateForModel(Model $model): string
+    // {
+    //     $stub = $this->filesystem->get($this->getStubPath());
+    //     
+    //     $stub = str_replace('{{ modelName }}', $model->name(), $stub);
+    //     // ... more replacements
+    //     
+    //     return $stub;
+    // }
+    //
+    // protected function getStubPath(): string
+    // {
+    //     return __DIR__ . '/stubs/your-template.stub';
+    // }
 } 

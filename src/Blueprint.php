@@ -10,6 +10,7 @@ use Blueprint\Events\GeneratorExecuting;
 use Blueprint\Events\GeneratorExecuted;
 use Blueprint\Exceptions\ParsingException;
 use Blueprint\Exceptions\ValidationException;
+use Blueprint\Plugin\GeneratorRegistry;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\Str;
 use Symfony\Component\Yaml\Yaml;
@@ -22,6 +23,8 @@ class Blueprint
     private array $generators = [];
 
     private ?Dispatcher $events = null;
+
+    private ?GeneratorRegistry $generatorRegistry = null;
 
     public static function relativeNamespace(string $fullyQualifiedClassName): string
     {
@@ -136,16 +139,35 @@ class Blueprint
         
         $components = [];
 
-        foreach ($this->generators as $generator) {
-            if ($this->shouldGenerate($generator->types(), $only, $skip)) {
-                // Fire generator executing event
-                $this->fireEvent(new GeneratorExecuting($tree, $generator, $only, $skip));
-                
-                $output = $generator->output($tree, $overwriteMigrations);
-                $components = array_merge_recursive($components, $output);
-                
-                // Fire generator executed event
-                $this->fireEvent(new GeneratorExecuted($tree, $generator, $output, $only, $skip));
+        // Use generator registry if available, otherwise use legacy generators
+        if ($this->generatorRegistry) {
+            $activeGenerators = $this->generatorRegistry->getActiveGenerators($tree);
+            
+            foreach ($activeGenerators as $generator) {
+                if ($this->shouldGenerate($generator->types(), $only, $skip)) {
+                    // Fire generator executing event
+                    $this->fireEvent(new GeneratorExecuting($tree, $generator, $only, $skip));
+                    
+                    $output = $generator->output($tree, $overwriteMigrations);
+                    $components = array_merge_recursive($components, $output);
+                    
+                    // Fire generator executed event
+                    $this->fireEvent(new GeneratorExecuted($tree, $generator, $output, $only, $skip));
+                }
+            }
+        } else {
+            // Legacy generator support
+            foreach ($this->generators as $generator) {
+                if ($this->shouldGenerate($generator->types(), $only, $skip)) {
+                    // Fire generator executing event
+                    $this->fireEvent(new GeneratorExecuting($tree, $generator, $only, $skip));
+                    
+                    $output = $generator->output($tree, $overwriteMigrations);
+                    $components = array_merge_recursive($components, $output);
+                    
+                    // Fire generator executed event
+                    $this->fireEvent(new GeneratorExecuted($tree, $generator, $output, $only, $skip));
+                }
             }
         }
 
@@ -189,6 +211,16 @@ class Blueprint
     public function getEventDispatcher(): ?Dispatcher
     {
         return $this->events;
+    }
+
+    public function setGeneratorRegistry(GeneratorRegistry $registry): void
+    {
+        $this->generatorRegistry = $registry;
+    }
+
+    public function getGeneratorRegistry(): ?GeneratorRegistry
+    {
+        return $this->generatorRegistry;
     }
 
     private function fireEvent(object $event): void

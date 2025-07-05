@@ -216,6 +216,12 @@ class PluginDiscovery implements PluginDiscoveryContract
     {
         $dependencies = [];
         
+        // Get blueprint-specific dependencies from extra section
+        if (isset($composerData['extra']['blueprint-plugin']['dependencies'])) {
+            $dependencies = array_merge($dependencies, $composerData['extra']['blueprint-plugin']['dependencies']);
+        }
+        
+        // Also check regular composer dependencies for blueprint plugins
         if (isset($composerData['require'])) {
             foreach ($composerData['require'] as $package => $version) {
                 if (Str::startsWith($package, 'blueprint/') || Str::contains($package, 'blueprint-plugin')) {

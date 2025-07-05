@@ -12,6 +12,8 @@ use Blueprint\Contracts\PluginDiscovery;
 use Blueprint\Contracts\PluginManager;
 use Blueprint\Plugin\PluginDiscovery as ConcretePluginDiscovery;
 use Blueprint\Plugin\PluginManager as ConcretePluginManager;
+use Blueprint\Plugin\GeneratorRegistry;
+use Blueprint\Plugin\ConfigValidator;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Contracts\Support\DeferrableProvider;
@@ -73,13 +75,22 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             // Set up event dispatcher
             $blueprint->setEventDispatcher($app['events']);
             
+            // Set up generator registry
+            $generatorRegistry = $app[GeneratorRegistry::class];
+            $blueprint->setGeneratorRegistry($generatorRegistry);
+            
             $blueprint->registerLexer(new \Blueprint\Lexers\ConfigLexer($app));
             $blueprint->registerLexer(new \Blueprint\Lexers\ModelLexer);
             $blueprint->registerLexer(new \Blueprint\Lexers\SeederLexer);
             $blueprint->registerLexer(new \Blueprint\Lexers\ControllerLexer(new \Blueprint\Lexers\StatementLexer));
 
+            // Register core generators with the registry
             foreach (config('blueprint.generators') as $generator) {
-                $blueprint->registerGenerator(new $generator($app['files']));
+                $generatorInstance = new $generator($app['files']);
+                $blueprint->registerGenerator($generatorInstance);
+                // Register with registry using generator class name as type
+                $type = class_basename($generator);
+                $generatorRegistry->registerGenerator($type, $generatorInstance);
             }
 
             return $blueprint;
@@ -115,6 +126,8 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             Blueprint::class,
             PluginDiscovery::class,
             PluginManager::class,
+            GeneratorRegistry::class,
+            ConfigValidator::class,
         ];
     }
 
@@ -127,11 +140,27 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             return new ConcretePluginDiscovery($app['files']);
         });
 
+        $this->app->singleton(GeneratorRegistry::class, function ($app) {
+            return new GeneratorRegistry($app['files']);
+        });
+
+        $this->app->singleton(ConfigValidator::class, function ($app) {
+            return new ConfigValidator();
+        });
+
         $this->app->singleton(PluginManager::class, function ($app) {
-            return new ConcretePluginManager(
+            $manager = new ConcretePluginManager(
                 $app[PluginDiscovery::class],
                 $app['events']
             );
+            
+            // Set the generator registry
+            $manager->setGeneratorRegistry($app[GeneratorRegistry::class]);
+            
+            // Set the configuration validator
+            $manager->setConfigValidator($app[ConfigValidator::class]);
+            
+            return $manager;
         });
     }
 

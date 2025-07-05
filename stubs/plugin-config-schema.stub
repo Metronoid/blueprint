@@ -1,0 +1,124 @@
+<?php
+
+namespace {{ namespace }};
+
+use Blueprint\Plugin\ConfigValidator;
+
+class {{ class }}ConfigSchema
+{
+    /**
+     * Get the configuration schema for this plugin.
+     */
+    public static function getSchema(): array
+    {
+        return ConfigValidator::schema()
+            ->string('name', [
+                'required' => true,
+                'description' => 'The name of the plugin',
+                'minLength' => 1,
+                'maxLength' => 100,
+            ])
+            ->boolean('enabled', [
+                'default' => true,
+                'description' => 'Whether the plugin is enabled',
+            ])
+            ->integer('priority', [
+                'default' => 100,
+                'minimum' => 1,
+                'maximum' => 1000,
+                'description' => 'Plugin execution priority',
+            ])
+            ->array('generators', [
+                'default' => [],
+                'description' => 'List of generators to enable',
+                'items' => [
+                    'type' => 'string',
+                ],
+            ])
+            ->enum('output_format', ['json', 'yaml', 'xml'], [
+                'default' => 'json',
+                'description' => 'Output format for generated files',
+            ])
+            ->build();
+    }
+
+    /**
+     * Alternative: Define schema as array (more flexible).
+     */
+    public static function getSchemaArray(): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'name' => [
+                    'type' => 'string',
+                    'description' => 'The name of the plugin',
+                    'minLength' => 1,
+                    'maxLength' => 100,
+                ],
+                'enabled' => [
+                    'type' => 'boolean',
+                    'default' => true,
+                    'description' => 'Whether the plugin is enabled',
+                ],
+                'priority' => [
+                    'type' => 'integer',
+                    'default' => 100,
+                    'minimum' => 1,
+                    'maximum' => 1000,
+                    'description' => 'Plugin execution priority',
+                ],
+                'generators' => [
+                    'type' => 'array',
+                    'default' => [],
+                    'description' => 'List of generators to enable',
+                    'items' => [
+                        'type' => 'string',
+                    ],
+                ],
+                'output_format' => [
+                    'enum' => ['json', 'yaml', 'xml'],
+                    'default' => 'json',
+                    'description' => 'Output format for generated files',
+                ],
+                'custom_settings' => [
+                    'type' => 'object',
+                    'description' => 'Custom plugin-specific settings',
+                    'properties' => [
+                        // Add your custom settings here
+                    ],
+                ],
+            ],
+            'required' => ['name'],
+        ];
+    }
+
+    /**
+     * Get default configuration values.
+     */
+    public static function getDefaults(): array
+    {
+        return [
+            'name' => '{{ name }}',
+            'enabled' => true,
+            'priority' => 100,
+            'generators' => [],
+            'output_format' => 'json',
+            'custom_settings' => [],
+        ];
+    }
+
+    /**
+     * Validate configuration with custom logic.
+     */
+    public static function validateConfig(array $config): array
+    {
+        // TODO: Add custom validation logic here
+        // Example:
+        // if ($config['enabled'] && empty($config['generators'])) {
+        //     throw new \InvalidArgumentException('Enabled plugin must have at least one generator');
+        // }
+
+        return $config;
+    }
+} 

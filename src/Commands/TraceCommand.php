@@ -42,23 +42,23 @@ class TraceCommand extends Command
     public function handle(): int
     {
         try {
-            $blueprint = resolve(Blueprint::class);
-            $path = $this->option('path');
-            $definitions = $this->tracer->execute($blueprint, $this->filesystem, $path);
+        $blueprint = resolve(Blueprint::class);
+        $path = $this->option('path');
+        $definitions = $this->tracer->execute($blueprint, $this->filesystem, $path);
 
-            if (empty($definitions)) {
-                $this->error('No models found');
+        if (empty($definitions)) {
+            $this->error('No models found');
                 $this->line('');
                 $this->line('Suggestions:');
                 $this->line('  • Check that your models directory exists and contains model files');
                 $this->line('  • Verify that model files follow Laravel naming conventions');
                 $this->line('  • Ensure model classes extend Illuminate\\Database\\Eloquent\\Model');
                 $this->line('  • Use --path option to specify custom model directories');
-            } else {
-                $this->info('Traced ' . count($definitions) . ' ' . Str::plural('model', count($definitions)));
-            }
+        } else {
+            $this->info('Traced ' . count($definitions) . ' ' . Str::plural('model', count($definitions)));
+        }
 
-            return 0;
+        return 0;
         } catch (BlueprintException $e) {
             $this->error('Blueprint Error: ' . $e->getMessage());
             
