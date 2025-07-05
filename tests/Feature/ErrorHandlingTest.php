@@ -37,7 +37,7 @@ class ErrorHandlingTest extends TestCase
     /** @test */
     public function it_throws_parsing_exception_for_missing_required_sections()
     {
-        $emptyYaml = "# Empty YAML file\nconfig:\n  namespace: App";
+        $emptyYaml = "# Empty YAML file\nmodels:\ncontrollers:\n";
         
         $this->expectException(ParsingException::class);
         $this->expectExceptionMessage('Missing required section');
@@ -51,7 +51,7 @@ class ErrorHandlingTest extends TestCase
         $invalidModelYaml = "models:\n  123InvalidName:\n    columns:\n      name: string";
         
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Model name must start with uppercase letter');
+        $this->expectExceptionMessage('Model name must start with a letter and contain only letters, numbers, underscores, and forward/backslashes for namespaces');
         
         $this->blueprint->parse($invalidModelYaml, true, 'test.yaml');
     }
@@ -61,8 +61,8 @@ class ErrorHandlingTest extends TestCase
     {
         $invalidColumnYaml = "models:\n  User:\n    columns:\n      123invalid: string";
         
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage('Column name must start with lowercase letter');
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Column name must start with a letter and contain only letters, numbers, and underscores');
         
         $this->blueprint->parse($invalidColumnYaml, true, 'test.yaml');
     }
@@ -72,8 +72,8 @@ class ErrorHandlingTest extends TestCase
     {
         $duplicateModelYaml = "models:\n  User:\n    columns:\n      name: string\n  User:\n    columns:\n      email: string";
         
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage('Duplicate model definition');
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Duplicate key "User" detected');
         
         $this->blueprint->parse($duplicateModelYaml, true, 'test.yaml');
     }
@@ -83,8 +83,8 @@ class ErrorHandlingTest extends TestCase
     {
         $invalidRelationshipYaml = "models:\n  User:\n    relationships:\n      posts:\n        invalidRelationType: Post";
         
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage('Unsupported relationship type');
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Unsupported relationship type \'invalidRelationType\'');
         
         $this->blueprint->parse($invalidRelationshipYaml, true, 'test.yaml');
     }
@@ -95,7 +95,7 @@ class ErrorHandlingTest extends TestCase
         $invalidControllerYaml = "controllers:\n  123InvalidController:\n    index:\n      query: all";
         
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Controller name must start with uppercase letter');
+        $this->expectExceptionMessage('Controller name must start with a letter and contain only letters, numbers, underscores, and forward/backslashes for namespaces');
         
         $this->blueprint->parse($invalidControllerYaml, true, 'test.yaml');
     }

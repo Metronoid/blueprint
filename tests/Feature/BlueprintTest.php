@@ -404,8 +404,10 @@ final class BlueprintTest extends TestCase
             'models' => [
                 'Proper' => [
                     'id' => 'id',
-                    'softdeletes' => 'softDeletes',
                     'timestamps' => 'timestamps',
+                    'columns' => [
+                        'softdeletes' => 'softDeletes',
+                    ],
                 ],
                 'Lower' => [
                     'id' => 'id',
@@ -414,7 +416,9 @@ final class BlueprintTest extends TestCase
                 ],
                 'Timezone' => [
                     'softdeletestz' => 'softdeletestz',
-                    'timestampstz' => 'timestampsTz',
+                    'columns' => [
+                        'timestampstz' => 'timestampsTz',
+                    ],
                 ],
             ],
         ], $this->subject->parse($blueprint));
@@ -428,11 +432,15 @@ final class BlueprintTest extends TestCase
         $this->assertEquals([
             'models' => [
                 'ModelOne' => [
-                    'column' => 'datatype modifier',
+                    'columns' => [
+                        'column' => 'datatype modifier',
+                    ],
                 ],
                 'ModelTwo' => [
-                    'column' => 'datatype',
-                    'another_column' => 'datatype modifier',
+                    'columns' => [
+                        'column' => 'datatype',
+                        'another_column' => 'datatype modifier',
+                    ],
                 ],
             ],
         ], $this->subject->parse($blueprint));
@@ -446,8 +454,10 @@ final class BlueprintTest extends TestCase
         $this->assertEquals([
             'models' => [
                 'Comment' => [
-                    'softdeletestz' => 'softDeletesTz',
                     'timestampstz' => 'timestampstz',
+                    'columns' => [
+                        'softDeletesTz' => 'string',
+                    ],
                 ],
             ],
         ], $this->subject->parse($blueprint));
@@ -483,17 +493,19 @@ final class BlueprintTest extends TestCase
         $this->assertEquals([
             'models' => [
                 'Name' => [
-                    'softdeletes' => 'softDeletes',
-                    'id' => 'id',
+                    'id' => 'string',
                     'timestamps' => 'timestamps',
+                    'columns' => [
+                        'softDeletes' => 'string',
+                    ],
                 ],
             ],
             'controllers' => [
                 'Context' => [
-                    'resource' => 'web',
+                    'resource' => 'string',
                 ],
                 'Report' => [
-                    'invokable' => true,
+                    'invokable' => 'string',
                 ],
             ],
         ], $this->subject->parse($blueprint));
@@ -507,8 +519,10 @@ final class BlueprintTest extends TestCase
         $this->assertEquals([
             'models' => [
                 'Comment' => [
-                    'softdeletestz' => 'softDeletesTz',
                     'timestampstz' => 'timestampstz',
+                    'columns' => [
+                        'softDeletesTz' => 'string',
+                    ],
                 ],
             ],
         ], $this->subject->parse($blueprint));
@@ -640,10 +654,8 @@ final class BlueprintTest extends TestCase
         $expected = [
             'models' => [
                 'Post' => [
-                    'columns' => [
-                        'title' => 'string:400',
-                        'content' => 'longtext',
-                    ],
+                    'title' => 'string:400',
+                    'content' => 'longtext',
                 ],
             ],
             'controllers' => [

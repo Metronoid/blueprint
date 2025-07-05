@@ -367,13 +367,13 @@ class Blueprint
         if (isset($definition['columns'])) {
             foreach ($definition['columns'] as $columnName => $columnDef) {
                 if (!is_string($columnName) || empty($columnName)) {
-                    throw ValidationException::invalidColumnDefinition($columnName, $modelName, 'Column name must be a non-empty string');
+                    throw ParsingException::invalidModelDefinition($modelName, 'Column name must be a non-empty string', $filePath ?? 'unknown');
                 }
 
                 // Be more lenient with column name validation to allow Laravel column types and relationship types
                 // The ModelLexer will handle these appropriately
                 if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $columnName)) {
-                    throw ValidationException::invalidColumnDefinition($columnName, $modelName, 'Column name must start with a letter and contain only letters, numbers, and underscores');
+                    throw ParsingException::invalidModelDefinition($modelName, 'Column name must start with a letter and contain only letters, numbers, and underscores', $filePath ?? 'unknown');
                 }
             }
         }
@@ -406,7 +406,7 @@ class Blueprint
             if (is_array($relationshipDef)) {
                 foreach ($relationshipDef as $type => $target) {
                     if (!in_array($type, $validRelationshipTypes)) {
-                        throw ValidationException::invalidRelationship($type, $modelName, "Unsupported relationship type '{$type}'");
+                        throw ParsingException::invalidModelDefinition($modelName, "Unsupported relationship type '{$type}'", $filePath ?? 'unknown');
                     }
                 }
             }
@@ -461,13 +461,13 @@ class Blueprint
         // Check for duplicate model names
         if (count($modelNames) !== count(array_unique($modelNames))) {
             $duplicates = array_diff_assoc($modelNames, array_unique($modelNames));
-            throw ValidationException::duplicateDefinition('model', reset($duplicates), $filePath ?? 'unknown');
+            throw ParsingException::invalidModelDefinition(reset($duplicates), 'Duplicate model definition', $filePath ?? 'unknown');
         }
 
         // Check for duplicate controller names
         if (count($controllerNames) !== count(array_unique($controllerNames))) {
             $duplicates = array_diff_assoc($controllerNames, array_unique($controllerNames));
-            throw ValidationException::duplicateDefinition('controller', reset($duplicates), $filePath ?? 'unknown');
+            throw ParsingException::invalidControllerDefinition(reset($duplicates), 'Duplicate controller definition', $filePath ?? 'unknown');
         }
     }
 
