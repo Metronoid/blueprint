@@ -691,6 +691,7 @@ return new class extends Migration
             $table->string('causality_chain')->nullable(); // Chain of events that led to this change
             $table->unsignedBigInteger('parent_audit_id')->nullable(); // Link to parent audit if this is a side effect
             $table->string('audit_group_id')->nullable()->index(); // Group related audits together
+            $table->boolean('is_unrewindable')->default(false); // Flag to mark audits as unrewindable
             
             $table->timestamps();
 
@@ -698,6 +699,7 @@ return new class extends Migration
             $table->index(['auditable_type', 'auditable_id']);
             $table->index(['origin_type', 'created_at']);
             $table->index(['audit_group_id', 'created_at']);
+            $table->index(['is_unrewindable', 'created_at']);
         });
     }
 

@@ -1,0 +1,246 @@
+models:
+  # Financial transaction with unrewindable audits
+  Transaction:
+    columns:
+      transaction_id: string:50 unique
+      account_id: id foreign:accounts
+      amount: decimal:15,2
+      type: enum:debit,credit,transfer
+      description: string:255
+      reference: string:100 nullable
+      processed_at: timestamp
+      reconciled: boolean default:false
+      metadata: json nullable
+    auditing:
+      events: [created, updated]
+      tags: [transaction, financial, audit]
+      console: true
+      strict: true
+      threshold: 1000
+      rewind:
+        enabled: true
+        validate: true
+        methods: [rewindTo]
+        exclude: [processed_at, reconciled]
+        max_steps: 3
+        backup: true
+        events: [rewound, financial_revert, compliance_alert]
+        # Some transactions should be marked as unrewindable for compliance
+        unrewindable_events: [reconciled, compliance_approved]
+    relationships:
+      belongsTo: Account
+
+  # Legal document with unrewindable version control
+  LegalDocument:
+    columns:
+      title: string:255
+      document_number: string:100 unique
+      content: longtext
+      version: integer default:1
+      status: enum:draft,review,approved,signed,archived
+      signed_at: nullable timestamp
+      signed_by: id foreign:users nullable
+      legal_reference: string:255 nullable
+      metadata: json nullable
+    auditing:
+      events: [created, updated, deleted]
+      exclude: [metadata]
+      tags: [legal, document, compliance]
+      strict: true
+      rewind:
+        enabled: true
+        include: [title, content, version, status]
+        validate: true
+        max_steps: 10
+        backup: true
+        events: [rewound, document_reverted]
+        # Signed documents should be unrewindable
+        unrewindable_events: [signed, archived]
+    relationships:
+      belongsTo: User:signer
+
+  # User account with unrewindable security changes
+  User:
+    columns:
+      name: string:255
+      email: string:191 unique
+      password: string
+      email_verified_at: nullable timestamp
+      remember_token: string:100 nullable
+      avatar: string nullable
+      bio: text nullable
+      preferences: json nullable
+      last_login_at: nullable timestamp
+      login_count: integer default:0
+      security_level: enum:basic,enhanced,admin default:basic
+      password_changed_at: nullable timestamp
+    auditing:
+      events: [created, updated, deleted, restored]
+      exclude: [password, remember_token, email_verified_at]
+      tags: [authentication, user_management, security]
+      strict: true
+      threshold: 50
+      rewind:
+        enabled: true
+        exclude: [password, remember_token, email_verified_at, last_login_at, login_count, password_changed_at]
+        max_steps: 10
+        validate: true
+        backup: true
+        events: [rewound, user_reverted]
+        # Security-related changes should be unrewindable
+        unrewindable_events: [password_changed, security_level_changed, account_locked]
+    relationships:
+      hasMany: Post, Comment, Order
+
+  # System configuration with unrewindable critical settings
+  SystemConfig:
+    columns:
+      key: string:255 unique
+      value: text
+      type: enum:string,integer,boolean,json,array
+      description: text nullable
+      is_public: boolean default:false
+      category: string:100 default:general
+      critical: boolean default:false
+      updated_by: id foreign:users
+      updated_at: timestamp
+    auditing:
+      events: [created, updated, deleted]
+      tags: [system_config, administration]
+      strict: true
+      threshold: 0
+      console: true
+      rewind:
+        enabled: true
+        methods: [rewindTo, rewindToDate]
+        validate: true
+        max_steps: 20
+        backup: true
+        events: [rewound, config_reverted]
+        # Critical system settings should be unrewindable
+        unrewindable_events: [critical_config_changed, security_config_updated]
+    relationships:
+      belongsTo: User:updater
+
+  # Audit log with unrewindable entries
+  AuditLog:
+    columns:
+      user_id: id foreign:users nullable
+      action: string:255
+      entity_type: string:255
+      entity_id: bigint
+      old_values: json nullable
+      new_values: json nullable
+      ip_address: string:45
+      user_agent: text
+      session_id: string:255 nullable
+      metadata: json nullable
+      is_critical: boolean default:false
+      created_at: timestamp
+    auditing:
+      events: [created]
+      tags: [audit_log, security]
+      strict: true
+      threshold: 0
+      console: true
+      rewind:
+        enabled: false  # Audit logs themselves should not be rewindable
+        # But they can be marked as unrewindable for compliance
+        unrewindable_events: [critical_action, security_violation, compliance_required]
+    relationships:
+      belongsTo: User
+
+controllers:
+  # Transaction management with unrewindable controls
+  Admin\Transaction:
+    audit_history:
+      find: transaction
+      query: transaction.audits order:created_at,desc limit:50
+      render: admin.transactions.audit-history with:transaction,audits
+      
+    mark_unrewindable:
+      find: transaction
+      find: audit
+      authorize: can_mark_financial_unrewindable
+      flash: 'Transaction audit marked as unrewindable for compliance'
+      redirect: admin.transactions.show with:transaction
+      
+    mark_reconciled_unrewindable:
+      query: transactions where:reconciled,true
+      flash: 'All reconciled transactions marked as unrewindable'
+      redirect: admin.transactions.index
+
+  # Legal document management
+  Admin\LegalDocument:
+    audit_history:
+      find: document
+      query: document.audits order:created_at,desc limit:50
+      render: admin.legal-documents.audit-history with:document,audits
+      
+    mark_signed_unrewindable:
+      find: document
+      query: document.audits where:event,signed
+      flash: 'Signed document audits marked as unrewindable'
+      redirect: admin.legal-documents.show with:document
+      
+    sign_document:
+      find: document
+      update: status, signed_at, signed_by
+      flash: 'Document signed and marked as unrewindable'
+      redirect: admin.legal-documents.show with:document
+
+  # User security management
+  Admin\User:
+    audit_history:
+      find: user
+      query: user.audits order:created_at,desc limit:50
+      render: admin.users.audit-history with:user,audits
+      
+    mark_security_unrewindable:
+      find: user
+      query: user.audits where:event,like,%security%
+      flash: 'Security-related audits marked as unrewindable'
+      redirect: admin.users.show with:user
+      
+    change_password:
+      find: user
+      validate: password
+      update: password, password_changed_at
+      flash: 'Password changed and audit marked as unrewindable'
+      redirect: admin.users.show with:user
+
+  # System configuration management
+  Admin\SystemConfig:
+    audit_history:
+      find: config
+      query: config.audits order:created_at,desc limit:50
+      render: admin.config.audit-history with:config,audits
+      
+    mark_critical_unrewindable:
+      find: config
+      query: config.audits where:critical,true
+      flash: 'Critical configuration audits marked as unrewindable'
+      redirect: admin.config.show with:config
+      
+    update_critical_config:
+      find: config
+      validate: value
+      update: value, critical
+      flash: 'Critical configuration updated and marked as unrewindable'
+      redirect: admin.config.show with:config
+
+  # Audit log management
+  Admin\AuditLog:
+    audit_history:
+      find: audit_log
+      query: audit_log.audits order:created_at,desc limit:50
+      render: admin.audit-logs.audit-history with:audit_log,audits
+      
+    mark_critical_unrewindable:
+      query: audit_logs where:is_critical,true
+      flash: 'Critical audit logs marked as unrewindable'
+      redirect: admin.audit-logs.index
+      
+    compliance_report:
+      query: audit_logs where:is_critical,true group:action select:action,count:*
+      render: admin.audit-logs.compliance-report with:report 

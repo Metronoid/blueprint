@@ -6,6 +6,8 @@ A powerful Blueprint extension that adds Laravel Auditing package integration to
 
 - **Auditing Configuration**: Automatically configure Laravel Auditing for models
 - **Rewind Functionality**: Add time-travel capabilities to your models
+- **Unrewindable Audits**: Mark specific audits as unrewindable for compliance and security
+- **Git-like Versioning**: Full Git-like branching, committing, and merging for models
 - **Origin Tracking**: Comprehensive tracking of what caused each change
 - **Request Context**: Track HTTP requests, routes, and controller actions
 - **Side Effects Tracking**: Monitor cascading changes across related models
@@ -163,6 +165,53 @@ models:
         exclude_attributes: [id, created_at, updated_at]
 ```
 
+### Auditing with Unrewindable Flag
+
+Mark specific audits as unrewindable for compliance and security:
+
+```yaml
+models:
+  Transaction:
+    transaction_id: string:50 unique
+    amount: decimal:15,2
+    reconciled: boolean default:false
+    auditing:
+      events: [created, updated]
+      rewind:
+        enabled: true
+        validate: true
+        max_steps: 3
+        backup: true
+        # Mark certain events as unrewindable
+        unrewindable_events: [reconciled, compliance_approved]
+```
+
+### Auditing with Git-like Versioning
+
+Add Git-like branching, committing, and merging to your models:
+
+```yaml
+models:
+  Document:
+    title: string:255
+    content: longtext
+    status: enum:draft,review,approved,published
+    auditing:
+      events: [created, updated, deleted]
+      git_versioning:
+        enabled: true
+        auto_initialize: true
+        default_branch: main
+        auto_commit: false
+        commit_on_save: true
+        merge_strategies: [fast-forward, merge, rebase]
+        tag_creation: semantic
+        branch_naming: kebab-case
+        commit_message_template: '{action} document: {title}'
+        include_attributes: [title, content, status]
+        exclude_attributes: [id, created_at, updated_at]
+```
+
 ### Custom Audit Model
 
 Specify a custom audit model implementation:
@@ -224,6 +273,26 @@ models:
 - `max_steps`: Maximum number of steps to rewind
 - `include_attributes`: Array of attributes to include in rewind
 - `exclude_attributes`: Array of attributes to exclude from rewind
+
+### Git-like Versioning Configuration
+
+- `enabled`: Whether Git-like versioning is enabled
+- `auto_initialize`: Whether to automatically initialize Git versioning
+- `default_branch`: The default branch name (usually 'main')
+- `auto_commit`: Whether to automatically commit changes
+- `commit_on_save`: Whether to commit changes when model is saved
+- `allow_force_delete`: Whether to allow force deletion of branches
+- `merge_strategies`: Array of allowed merge strategies
+- `default_merge_strategy`: Default merge strategy to use
+- `tag_creation`: Tag creation mode ('manual', 'auto', 'semantic')
+- `branch_naming`: Branch naming convention
+- `commit_message_template`: Template for commit messages
+- `include_attributes`: Array of attributes to include in versioning
+- `exclude_attributes`: Array of attributes to exclude from versioning
+- `max_branches_per_model`: Maximum number of branches per model
+- `max_commits_per_branch`: Maximum number of commits per branch
+- `auto_cleanup_old_branches`: Whether to automatically cleanup old branches
+- `cleanup_days_threshold`: Number of days before cleanup
 
 ## Generated Components
 
@@ -401,6 +470,174 @@ if ($post->canRewindTo($auditId)) {
 $diff = $post->getRewindDiff($auditId);
 ```
 
+## Using Unrewindable Audit Functionality
+
+The unrewindable functionality allows you to mark specific audits as unrewindable for compliance and security:
+
+```php
+// Mark a single audit as unrewindable
+$transaction->markAuditAsUnrewindable($auditId, 'Compliance requirement', ['regulation' => 'SOX']);
+
+// Mark multiple audits as unrewindable
+$results = $transaction->markAuditsAsUnrewindable([1, 2, 3], 'Bulk compliance update');
+
+// Mark audits in a date range as unrewindable
+$results = $transaction->markAuditsInRangeAsUnrewindable(
+    '2023-01-01', 
+    '2023-01-31', 
+    'End of month reconciliation'
+);
+
+// Mark audits by event type as unrewindable
+$results = $transaction->markAuditsByEventAsUnrewindable('reconciled', 'Financial compliance');
+
+// Mark audits by user as unrewindable
+$results = $transaction->markAuditsByUserAsUnrewindable($userId, 'User termination');
+
+// Check if an audit can be rewound
+if ($transaction->canRewindAudit($auditId)) {
+    // Safe to rewind
+}
+
+// Get rewindable vs unrewindable statistics
+$stats = $transaction->getRewindableStatistics();
+
+// Get unrewindable audits
+$unrewindableAudits = $transaction->getUnrewindableAudits();
+
+// Get the reason why an audit is unrewindable
+$reason = $transaction->getUnrewindableReason($auditId);
+```
+
+### API Endpoints
+
+The plugin provides API endpoints for managing unrewindable audits:
+
+```php
+// Mark a single audit as unrewindable
+POST /api/auditing/audits/{audit}/mark-unrewindable
+{
+    "reason": "Compliance requirement",
+    "metadata": {"regulation": "SOX"}
+}
+
+// Mark multiple audits as unrewindable
+POST /api/auditing/audits/mark-unrewindable-bulk
+{
+    "audit_ids": [1, 2, 3],
+    "reason": "Bulk compliance update"
+}
+
+// Get rewindable audits for a model
+GET /api/auditing/models/{modelType}/{modelId}/rewindable-audits?limit=50
+
+// Get unrewindable audits for a model
+GET /api/auditing/models/{modelType}/{modelId}/unrewindable-audits?limit=50
+
+// Get rewindable statistics
+GET /api/auditing/models/{modelType}/{modelId}/rewindable-statistics
+
+// Mark audits by criteria as unrewindable
+POST /api/auditing/models/{modelType}/{modelId}/mark-audits-unrewindable
+{
+    "criteria": "date_range",
+    "start_date": "2023-01-01",
+    "end_date": "2023-01-31",
+    "reason": "End of month reconciliation"
+}
+```
+
+## Using Git-like Versioning
+
+The Git-like versioning functionality provides full Git-like capabilities for your models:
+
+### Basic Git Operations
+
+```php
+// Initialize Git versioning
+$document->initializeGitVersioning();
+
+// Create a new branch
+$branchId = $document->createBranch('feature/new-content', null, 'Add new content section');
+
+// Switch to a branch
+$document->checkoutBranch($branchId);
+
+// Stage changes
+$document->stageChanges(['title' => 'Updated Title', 'content' => 'New content']);
+
+// Commit changes
+$commitId = $document->commit('Update document title and content');
+
+// List branches
+$branches = $document->listBranches();
+
+// Get commit history
+$commits = $document->getCommitHistory();
+```
+
+### Advanced Git Operations
+
+```php
+// Merge branches
+$mergeCommitId = $document->mergeBranch($sourceBranchId, 'merge');
+
+// Create tags
+$tagId = $document->createTag('v1.0.0', 'Release version 1.0.0');
+
+// Reset to a specific commit
+$document->resetToCommit($commitId, 'mixed');
+
+// Get diff between commits
+$diff = $document->getCommitDiff($commitId1, $commitId2);
+
+// Get current branch info
+$branchInfo = $document->getCurrentBranchInfo();
+
+// Delete a branch
+$document->deleteBranch($branchId, false);
+```
+
+### Branch Management
+
+```php
+// Create feature branch
+$featureBranchId = $document->createBranch('feature/user-authentication');
+
+// Work on feature branch
+$document->checkoutBranch($featureBranchId);
+$document->stageChanges(['content' => 'Add authentication section']);
+$document->commit('Add user authentication documentation');
+
+// Switch back to main
+$document->checkoutBranch($mainBranchId);
+
+// Merge feature branch
+$document->mergeBranch($featureBranchId, 'merge');
+
+// Delete feature branch after merge
+$document->deleteBranch($featureBranchId);
+```
+
+### Conflict Resolution
+
+```php
+try {
+    $document->mergeBranch($sourceBranchId, 'merge');
+} catch (MergeConflictException $e) {
+    $conflicts = $e->getConflicts();
+    
+    // Resolve conflicts manually
+    foreach ($conflicts as $attribute => $conflict) {
+        // Choose which value to keep
+        $document->$attribute = $conflict['ours']; // or $conflict['theirs']
+    }
+    
+    // Complete the merge
+    $document->commit('Resolve merge conflicts');
+}
+```
+
 ## Configuration
 
 The extension can be configured via the `config/blueprint-auditing.php` file:
@@ -458,6 +695,7 @@ Check out the `examples/` directory for comprehensive examples:
 - `simple-auditing.yaml` - Basic auditing examples for beginners
 - `blog-with-auditing.yaml` - Blog system with comprehensive auditing
 - `rewind-example.yaml` - E-commerce system with rewind functionality
+- `git-versioning-example.yaml` - Document management with Git-like versioning
 - `advanced-auditing.yaml` - Advanced auditing scenarios (document management, workflows, etc.)
 
 ## Dependencies

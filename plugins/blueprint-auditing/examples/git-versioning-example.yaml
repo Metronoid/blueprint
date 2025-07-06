@@ -1,0 +1,412 @@
+models:
+  # Document with Git-like versioning
+  Document:
+    columns:
+      title: string:255
+      content: longtext
+      version: integer default:1
+      status: enum:draft,review,approved,published
+      author_id: id foreign:users
+      reviewer_id: id foreign:users nullable
+      published_at: nullable timestamp
+      metadata: json nullable
+    auditing:
+      events: [created, updated, deleted, restored]
+      exclude: [metadata]
+      tags: [document, version_control]
+      strict: true
+      threshold: 0
+      git_versioning:
+        enabled: true
+        auto_initialize: true
+        default_branch: main
+        auto_commit: false
+        commit_on_save: true
+        allow_force_delete: false
+        merge_strategies: [fast-forward, merge, rebase]
+        default_merge_strategy: merge
+        tag_creation: semantic
+        branch_naming: kebab-case
+        commit_message_template: '{action} document: {title}'
+        exclude_attributes: [id, created_at, updated_at, deleted_at]
+        include_attributes: [title, content, version, status]
+        max_branches_per_model: 50
+        max_commits_per_branch: 500
+        auto_cleanup_old_branches: true
+        cleanup_days_threshold: 30
+      rewind:
+        enabled: true
+        methods: [rewindTo, rewindToDate, rewindSteps, getRewindableAudits]
+        include: [title, content, version, status]
+        validate: true
+        max_steps: 20
+        backup: true
+        events: [rewound, document_reverted]
+    relationships:
+      belongsTo: User:author, User:reviewer
+      hasMany: DocumentComment, DocumentVersion
+
+  # Code repository with Git-like versioning
+  CodeRepository:
+    columns:
+      name: string:255
+      description: text nullable
+      repository_url: string:500
+      branch: string:100 default:main
+      last_commit_hash: string:40 nullable
+      last_commit_message: text nullable
+      owner_id: id foreign:users
+      is_public: boolean default:false
+      settings: json nullable
+    auditing:
+      events: [created, updated, deleted]
+      exclude: [settings, last_commit_hash]
+      tags: [code, repository]
+      git_versioning:
+        enabled: true
+        auto_initialize: true
+        default_branch: main
+        auto_commit: true
+        commit_on_save: true
+        allow_force_delete: true
+        merge_strategies: [fast-forward, merge]
+        default_merge_strategy: fast-forward
+        tag_creation: auto
+        branch_naming: kebab-case
+        commit_message_template: 'Update {name}: {description}'
+        exclude_attributes: [id, created_at, updated_at]
+        include_attributes: [name, description, branch, is_public]
+        max_branches_per_model: 200
+        max_commits_per_branch: 2000
+        auto_cleanup_old_branches: false
+      rewind:
+        enabled: true
+        include: [name, description, branch, is_public]
+        validate: true
+        max_steps: 50
+        backup: true
+    relationships:
+      belongsTo: User:owner
+      hasMany: CodeFile, CodeCommit
+
+  # Configuration with Git-like versioning
+  Configuration:
+    columns:
+      key: string:255 unique
+      value: text
+      type: enum:string,integer,boolean,json,array
+      description: text nullable
+      category: string:100 default:general
+      is_public: boolean default:false
+      updated_by: id foreign:users
+    auditing:
+      events: [created, updated, deleted]
+      exclude: [is_public]
+      tags: [configuration, system]
+      git_versioning:
+        enabled: true
+        auto_initialize: true
+        default_branch: main
+        auto_commit: false
+        commit_on_save: true
+        allow_force_delete: false
+        merge_strategies: [merge, rebase]
+        default_merge_strategy: merge
+        tag_creation: semantic
+        branch_naming: snake_case
+        commit_message_template: 'Config {key}: {description}'
+        exclude_attributes: [id, created_at, updated_at]
+        include_attributes: [key, value, type, description, category]
+        max_branches_per_model: 20
+        max_commits_per_branch: 100
+        auto_cleanup_old_branches: true
+        cleanup_days_threshold: 60
+      rewind:
+        enabled: true
+        include: [key, value, type, description, category]
+        validate: true
+        max_steps: 10
+        backup: true
+        events: [rewound, config_reverted]
+    relationships:
+      belongsTo: User:updater
+
+  # Workflow with Git-like versioning
+  Workflow:
+    columns:
+      name: string:255
+      description: text nullable
+      steps: json
+      triggers: json nullable
+      conditions: json nullable
+      status: enum:draft,active,inactive
+      version: integer default:1
+      created_by: id foreign:users
+      updated_by: id foreign:users
+    auditing:
+      events: [created, updated, deleted]
+      exclude: [triggers, conditions]
+      tags: [workflow, business_logic]
+      git_versioning:
+        enabled: true
+        auto_initialize: true
+        default_branch: main
+        auto_commit: false
+        commit_on_save: true
+        allow_force_delete: false
+        merge_strategies: [merge]
+        default_merge_strategy: merge
+        tag_creation: manual
+        branch_naming: kebab-case
+        commit_message_template: 'Workflow {name} v{version}: {description}'
+        exclude_attributes: [id, created_at, updated_at]
+        include_attributes: [name, description, steps, status, version]
+        max_branches_per_model: 30
+        max_commits_per_branch: 300
+        auto_cleanup_old_branches: true
+        cleanup_days_threshold: 45
+      rewind:
+        enabled: true
+        include: [name, description, steps, status, version]
+        validate: true
+        max_steps: 15
+        backup: true
+        events: [rewound, workflow_reverted]
+    relationships:
+      belongsTo: User:creator, User:updater
+      hasMany: WorkflowInstance
+
+controllers:
+  # Document version control
+  Document:
+    index:
+      query: all
+      render: documents.index with:documents
+      
+    show:
+      find: document
+      render: documents.show with:document
+      
+    create:
+      render: documents.create
+      
+    store:
+      validate: document
+      save: document
+      fire: DocumentCreated with:document
+      redirect: document.show with:document
+      
+    edit:
+      find: document
+      render: documents.edit with:document
+      
+    update:
+      find: document
+      validate: document
+      update: document
+      fire: DocumentUpdated with:document
+      redirect: document.show with:document
+      
+    destroy:
+      find: document
+      delete: document
+      fire: DocumentDeleted with:document
+      redirect: documents.index
+
+  # Git versioning operations for documents
+  Document\Git:
+    # Branch operations
+    create_branch:
+      find: document
+      validate: branch_name
+      flash: 'Branch "{branch_name}" created successfully'
+      redirect: document.show with:document
+      
+    checkout_branch:
+      find: document
+      find: branch
+      flash: 'Switched to branch "{branch.name}"'
+      redirect: document.show with:document
+      
+    list_branches:
+      find: document
+      render: documents.branches with:document,branches
+      
+    delete_branch:
+      find: document
+      find: branch
+      flash: 'Branch "{branch.name}" deleted'
+      redirect: document.show with:document
+
+    # Commit operations
+    commit:
+      find: document
+      validate: commit_message
+      flash: 'Changes committed successfully'
+      redirect: document.show with:document
+      
+    commit_history:
+      find: document
+      render: documents.commit-history with:document,commits
+      
+    show_commit:
+      find: document
+      find: commit
+      render: documents.commit-detail with:document,commit
+      
+    diff_commits:
+      find: document
+      find: commit1
+      find: commit2
+      render: documents.commit-diff with:document,commit1,commit2,diff
+
+    # Merge operations
+    merge_branch:
+      find: document
+      find: source_branch
+      validate: merge_strategy
+      flash: 'Branch "{source_branch.name}" merged successfully'
+      redirect: document.show with:document
+      
+    resolve_conflicts:
+      find: document
+      find: conflicts
+      render: documents.resolve-conflicts with:document,conflicts
+      
+    abort_merge:
+      find: document
+      flash: 'Merge aborted'
+      redirect: document.show with:document
+
+    # Tag operations
+    create_tag:
+      find: document
+      validate: tag_name,tag_message
+      flash: 'Tag "{tag_name}" created successfully'
+      redirect: document.show with:document
+      
+    list_tags:
+      find: document
+      render: documents.tags with:document,tags
+      
+    delete_tag:
+      find: document
+      find: tag
+      flash: 'Tag "{tag.name}" deleted'
+      redirect: document.show with:document
+
+    # Reset operations
+    reset_to_commit:
+      find: document
+      find: commit
+      validate: reset_mode
+      flash: 'Reset to commit "{commit.short_hash}" successfully'
+      redirect: document.show with:document
+      
+    reset_hard:
+      find: document
+      find: commit
+      authorize: can_reset_hard
+      flash: 'Hard reset to commit "{commit.short_hash}" completed'
+      redirect: document.show with:document
+
+  # Code repository Git operations
+  CodeRepository\Git:
+    # Repository operations
+    initialize_repo:
+      find: repository
+      flash: 'Repository "{repository.name}" initialized with Git versioning'
+      redirect: repository.show with:repository
+      
+    clone_branch:
+      find: repository
+      find: branch
+      flash: 'Branch "{branch.name}" cloned successfully'
+      redirect: repository.show with:repository
+      
+    push_changes:
+      find: repository
+      flash: 'Changes pushed to remote repository'
+      redirect: repository.show with:repository
+      
+    pull_changes:
+      find: repository
+      flash: 'Changes pulled from remote repository'
+      redirect: repository.show with:repository
+
+    # Advanced Git operations
+    rebase_branch:
+      find: repository
+      find: branch
+      flash: 'Branch "{branch.name}" rebased successfully'
+      redirect: repository.show with:repository
+      
+    cherry_pick:
+      find: repository
+      find: commit
+      flash: 'Commit "{commit.short_hash}" cherry-picked'
+      redirect: repository.show with:repository
+      
+    stash_changes:
+      find: repository
+      flash: 'Changes stashed successfully'
+      redirect: repository.show with:repository
+      
+    apply_stash:
+      find: repository
+      flash: 'Stashed changes applied'
+      redirect: repository.show with:repository
+
+  # Configuration Git operations
+  Configuration\Git:
+    # Configuration version control
+    version_config:
+      find: config
+      render: configurations.version with:config,versions
+      
+    rollback_config:
+      find: config
+      find: version
+      authorize: can_rollback_config
+      flash: 'Configuration rolled back to version {version}'
+      redirect: configuration.show with:config
+      
+    compare_versions:
+      find: config
+      find: version1
+      find: version2
+      render: configurations.compare with:config,version1,version2,diff
+      
+    deploy_config:
+      find: config
+      find: branch
+      authorize: can_deploy_config
+      flash: 'Configuration deployed from branch "{branch.name}"'
+      redirect: configuration.show with:config
+
+  # Workflow Git operations
+  Workflow\Git:
+    # Workflow version control
+    version_workflow:
+      find: workflow
+      render: workflows.version with:workflow,versions
+      
+    deploy_workflow:
+      find: workflow
+      find: branch
+      authorize: can_deploy_workflow
+      flash: 'Workflow deployed from branch "{branch.name}"'
+      redirect: workflow.show with:workflow
+      
+    test_workflow:
+      find: workflow
+      find: branch
+      flash: 'Testing workflow from branch "{branch.name}"'
+      redirect: workflow.show with:workflow
+      
+    promote_workflow:
+      find: workflow
+      find: branch
+      authorize: can_promote_workflow
+      flash: 'Workflow promoted to production'
+      redirect: workflow.show with:workflow 

@@ -22,6 +22,8 @@ class BlueprintAuditingServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->publishConfiguration();
+        $this->publishViews();
+        $this->loadRoutes();
         $this->registerPlugin();
     }
 
@@ -45,5 +47,30 @@ class BlueprintAuditingServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../config/blueprint-auditing.php' => config_path('blueprint-auditing.php'),
         ], 'blueprint-auditing-config');
+    }
+
+    /**
+     * Publish the package views.
+     */
+    protected function publishViews(): void
+    {
+        $this->publishes([
+            __DIR__ . '/../resources/views' => resource_path('views/vendor/blueprint-auditing'),
+        ], 'blueprint-auditing-views');
+
+        $this->loadViewsFrom(__DIR__ . '/../resources/views', 'blueprint-auditing');
+    }
+
+    /**
+     * Load the package routes.
+     */
+    protected function loadRoutes(): void
+    {
+        if (file_exists(__DIR__ . '/../routes/web.php')) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
+        }
+        if (file_exists(__DIR__ . '/../routes/api.php')) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
+        }
     }
 } 

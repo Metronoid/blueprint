@@ -153,6 +153,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Default Git-like Versioning Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Default configuration values for Git-like versioning when not specified
+    | in the YAML definition.
+    |
+    */
+    'git_versioning_defaults' => [
+        'enabled' => false,
+        'auto_initialize' => true,
+        'default_branch' => 'main',
+        'auto_commit' => false,
+        'commit_on_save' => false,
+        'allow_force_delete' => false,
+        'merge_strategies' => ['fast-forward', 'merge', 'rebase'],
+        'default_merge_strategy' => 'merge',
+        'tag_creation' => 'manual', // 'manual', 'auto', 'semantic'
+        'branch_naming' => 'kebab-case', // 'kebab-case', 'snake_case', 'camelCase'
+        'commit_message_template' => '{action} {model}: {description}',
+        'exclude_attributes' => ['id', 'created_at', 'updated_at', 'deleted_at'],
+        'include_attributes' => [],
+        'max_branches_per_model' => 100,
+        'max_commits_per_branch' => 1000,
+        'auto_cleanup_old_branches' => false,
+        'cleanup_days_threshold' => 90,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Default Auditing Configuration
     |--------------------------------------------------------------------------
     |

@@ -92,6 +92,7 @@ trait RewindableTrait
     {
         return $this->audits()
             ->whereIn('event', ['created', 'updated'])
+            ->where('is_unrewindable', false)
             ->orderBy('created_at', 'desc')
             ->get();
     }
@@ -275,6 +276,11 @@ trait RewindableTrait
     {
         // Check if the audit belongs to this model
         if ($audit->auditable_type !== get_class($this) || $audit->auditable_id !== $this->getKey()) {
+            return false;
+        }
+
+        // Check if the audit is marked as unrewindable
+        if ($audit->is_unrewindable) {
             return false;
         }
 
