@@ -174,6 +174,7 @@ return [
         'policy' => \Blueprint\Generators\PolicyGenerator::class,
         'layout' => \Blueprint\Generators\LayoutGenerator::class,
         'frontend' => \Blueprint\Generators\FrontendGenerator::class,
+        'dashboard' => \Blueprint\Generators\DashboardGenerator::class,
     ],
 
     /*

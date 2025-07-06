@@ -79,6 +79,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
         $this->app->bind('command.blueprint.new', fn ($app) => new NewCommand($app['files']));
         $this->app->bind('command.blueprint.init', fn ($app) => new InitCommand);
         $this->app->bind('command.blueprint.stubs', fn ($app) => new PublishStubsCommand);
+        $this->app->bind('command.blueprint.import-dashboard', fn ($app) => new ImportDashboardCommand);
 
         $this->app->singleton(Blueprint::class, function ($app) {
             $blueprint = new Blueprint;
@@ -95,6 +96,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             $blueprint->registerLexer(new \Blueprint\Lexers\SeederLexer);
             $blueprint->registerLexer(new \Blueprint\Lexers\ControllerLexer(new \Blueprint\Lexers\StatementLexer));
             $blueprint->registerLexer(new \Blueprint\Lexers\FrontendLexer);
+            $blueprint->registerLexer(new \Blueprint\Lexers\DashboardLexer);
 
             // Register plugin lexers if plugin system is available
             if ($app->bound(PluginManager::class)) {
@@ -139,6 +141,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             'command.blueprint.new',
             'command.blueprint.init',
             'command.blueprint.stubs',
+            'command.blueprint.import-dashboard',
         ]);
     }
 
@@ -153,6 +156,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             'command.blueprint.trace',
             'command.blueprint.new',
             'command.blueprint.init',
+            'command.blueprint.import-dashboard',
             Blueprint::class,
             PluginDiscovery::class,
             PluginManager::class,
@@ -192,6 +196,10 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             $manager->setConfigValidator($app[ConfigValidator::class]);
             
             return $manager;
+        });
+
+        $this->app->singleton(\Blueprint\Services\DashboardPluginManager::class, function ($app) {
+            return new \Blueprint\Services\DashboardPluginManager($app['files']);
         });
     }
 

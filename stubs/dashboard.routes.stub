@@ -1,0 +1,15 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Dashboard\{{ dashboardName }}Controller;
+
+Route::middleware(['auth', 'dashboard.access'])->group(function () {
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/', [{{ dashboardName }}Controller::class, 'index'])->name('dashboard.index');
+        
+        // Widget data routes
+        Route::prefix('widgets')->group(function () {
+{{ widgetRoutes }}
+        });
+    });
+}); 

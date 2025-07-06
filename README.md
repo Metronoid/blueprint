@@ -116,6 +116,239 @@ frontend:
 
 This will generate a complete React component with TypeScript interfaces, state management, methods, and styles. Blueprint supports generating components, pages, layouts, and even API integration code.
 
+### Dashboard System
+
+Blueprint includes a comprehensive dashboard system that can be generated from YAML configurations. The dashboard system supports both backend and frontend generation, and allows plugin extensions.
+
+#### Dashboard Configuration
+
+Create a `dashboard.base.yaml` file in your project root:
+
+```yaml
+dashboards:
+  AdminDashboard:
+    title: "Admin Dashboard"
+    description: "Administrative dashboard for managing the application"
+    layout: "admin"
+    theme:
+      primary_color: "#1f2937"
+      secondary_color: "#6b7280"
+      accent_color: "#3b82f6"
+      background_color: "#f9fafb"
+      text_color: "#1f2937"
+      border_color: "#e5e7eb"
+    permissions: ["view-dashboard", "manage-users"]
+    navigation:
+      - name: "overview"
+        title: "Overview"
+        route: "/dashboard"
+        icon: "home"
+      - name: "users"
+        title: "Users"
+        route: "/dashboard/users"
+        icon: "users"
+    widgets:
+      UserStats:
+        type: "metric"
+        title: "Total Users"
+        config:
+          format: "number"
+          color: "blue"
+      RecentActivity:
+        type: "table"
+        title: "Recent Activity"
+        config:
+          limit: 10
+          sort_by: "created_at"
+          sort_order: "desc"
+      ActivityChart:
+        type: "chart"
+        title: "Activity Over Time"
+        config:
+          chart_type: "line"
+          timeframe: "7d"
+```
+
+#### Widget Types
+
+- **metric**: Display a single value or status
+- **table**: Display tabular data
+- **list**: Display a list of items
+- **chart**: Display chart data (line, bar, pie, etc.)
+
+#### Plugin Extension
+
+Plugins can extend the dashboard by implementing the `DashboardPlugin` interface:
+
+```php
+<?php
+
+namespace MyPlugin;
+
+use Blueprint\Contracts\DashboardPlugin;
+use Blueprint\Models\Dashboard;
+
+class MyDashboardPlugin implements DashboardPlugin
+{
+    public function getName(): string
+    {
+        return 'My Plugin';
+    }
+
+    public function getDescription(): string
+    {
+        return 'My plugin description';
+    }
+
+    public function getVersion(): string
+    {
+        return '1.0.0';
+    }
+
+    public function extendDashboard(Dashboard $dashboard): void
+    {
+        $dashboard->addWidget('MyWidget', [
+            'type' => 'metric',
+            'title' => 'My Widget',
+            'config' => ['format' => 'number']
+        ]);
+    }
+
+    public function getWidgets(): array
+    {
+        return [
+            'MyWidget' => [
+                'type' => 'metric',
+                'title' => 'My Widget',
+                'config' => ['format' => 'number']
+            ]
+        ];
+    }
+
+    public function getNavigation(): array
+    {
+        return [
+            [
+                'name' => 'my-plugin',
+                'title' => 'My Plugin',
+                'route' => '/my-plugin',
+                'icon' => 'puzzle'
+            ]
+        ];
+    }
+
+    public function getPermissions(): array
+    {
+        return ['view-my-plugin'];
+    }
+
+    public function getApiEndpoints(): array
+    {
+        return [
+            'my-data' => '/api/my-plugin/data'
+        ];
+    }
+
+    public function getSettings(): array
+    {
+        return [
+            'enabled' => true,
+            'config' => 'value'
+        ];
+    }
+
+    public function isEnabled(): bool
+    {
+        return config('my-plugin.enabled', true);
+    }
+
+    public function enable(): void
+    {
+        config(['my-plugin.enabled' => true]);
+    }
+
+    public function disable(): void
+    {
+        config(['my-plugin.enabled' => false]);
+    }
+}
+```
+
+#### Dashboard Generation
+
+Generate dashboard files from YAML:
+
+```bash
+php artisan blueprint:build dashboard.yaml
+```
+
+This will create:
+- Backend controllers, services, middleware, and policies
+- Frontend React components, layouts, stores, and styles
+- API routes and configuration files
+
+#### Dashboard Import
+
+Import the base dashboard configuration:
+
+```bash
+php artisan blueprint:import-dashboard
+```
+
+This creates a `dashboard.base.yaml` file in your project root with a default dashboard configuration.
+
+#### Dashboard API
+
+The dashboard system provides API endpoints for widget data:
+
+- `GET /blueprint/dashboard` - Get dashboard configuration and widget data
+- `GET /blueprint/dashboard/widgets/{widget}/data` - Get specific widget data
+
+#### Dashboard Frontend
+
+The dashboard frontend is built with React and includes:
+- Responsive layout with navigation
+- Widget components for different data types
+- Theme support with CSS variables
+- Plugin integration
+- Real-time data updates
+
+#### Dashboard Styling
+
+The dashboard uses CSS variables for theming:
+
+```css
+:root {
+    --dashboard-primary: #1f2937;
+    --dashboard-secondary: #6b7280;
+    --dashboard-accent: #3b82f6;
+    --dashboard-background: #f9fafb;
+    --dashboard-text: #1f2937;
+    --dashboard-border: #e5e7eb;
+}
+```
+
+#### Dashboard Testing
+
+Test the dashboard system:
+
+```bash
+php artisan test --filter=DashboardSystemTest
+```
+
+#### Replacing Existing Dashboard
+
+The new comprehensive dashboard system replaces the previous simple dashboard functionality. The old dashboard has been updated to use the new system with:
+
+- Enhanced DashboardController with plugin support
+- React-based frontend components
+- Plugin extension system
+- Comprehensive widget system
+- Theme customization
+- API endpoints for dynamic data
+
+The existing dashboard route `/blueprint/dashboard` now serves the new comprehensive dashboard with all the enhanced features.
+
 ## Documentation
 Browse the [Blueprint Docs](https://blueprint.laravelshift.com/) for full details on [defining models](https://blueprint.laravelshift.com/docs/defining-models/), [defining controllers](https://blueprint.laravelshift.com/docs/defining-controllers/), [advanced configuration](https://blueprint.laravelshift.com/docs/advanced-configuration/), and [extending Blueprint](https://blueprint.laravelshift.com/docs/extending-blueprint/).
 

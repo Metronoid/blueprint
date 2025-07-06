@@ -1,0 +1,47 @@
+<?php
+
+namespace App\Services\Dashboard\Widgets;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
+
+class {{ widgetName }}Service
+{
+    public function getData(): array
+    {
+        $query = $this->buildQuery();
+        
+        return [
+            'data' => $query->get(),
+            'config' => $this->getConfig(),
+        ];
+    }
+
+    private function buildQuery(): Builder
+    {
+        $query = {{ modelName }}::query();
+        
+        $this->applyColumns($query);
+        $this->applyFilters($query);
+        
+        return $query;
+    }
+
+    private function applyColumns(Builder $query): void
+    {
+        {{ columns }}
+    }
+
+    private function applyFilters(Builder $query): void
+    {
+{{ filters }}
+    }
+
+    private function getConfig(): array
+    {
+        return [
+            'type' => '{{ widgetType }}',
+            'title' => '{{ widgetName }}',
+        ];
+    }
+} 

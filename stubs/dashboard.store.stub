@@ -1,0 +1,70 @@
+import { create } from 'zustand';
+
+export const useDashboardStore = create((set, get) => ({
+  // Dashboard state
+  dashboard: null,
+  widgets: {
+{{ widgetState }}
+  },
+  loading: false,
+  error: null,
+
+  // Actions
+  setDashboard: (dashboard) => set({ dashboard }),
+  
+  setWidgetData: (widgetName, data) => set((state) => ({
+    widgets: {
+      ...state.widgets,
+      [widgetName]: {
+        ...state.widgets[widgetName],
+        data,
+        loading: false,
+      },
+    },
+  })),
+  
+  setWidgetLoading: (widgetName, loading) => set((state) => ({
+    widgets: {
+      ...state.widgets,
+      [widgetName]: {
+        ...state.widgets[widgetName],
+        loading,
+      },
+    },
+  })),
+  
+  setWidgetError: (widgetName, error) => set((state) => ({
+    widgets: {
+      ...state.widgets,
+      [widgetName]: {
+        ...state.widgets[widgetName],
+        error,
+        loading: false,
+      },
+    },
+  })),
+  
+  fetchWidgetData: async (widgetName) => {
+    const { setWidgetLoading, setWidgetData, setWidgetError } = get();
+    
+    setWidgetLoading(widgetName, true);
+    
+    try {
+      const response = await fetch(`/api/dashboard/widgets/${widgetName}/data`);
+      const data = await response.json();
+      setWidgetData(widgetName, data);
+    } catch (error) {
+      setWidgetError(widgetName, error.message);
+    }
+  },
+  
+  fetchAllWidgetData: async () => {
+    const { widgets, fetchWidgetData } = get();
+    
+    const promises = Object.keys(widgets).map(widgetName => 
+      fetchWidgetData(widgetName)
+    );
+    
+    await Promise.all(promises);
+  },
+})); 

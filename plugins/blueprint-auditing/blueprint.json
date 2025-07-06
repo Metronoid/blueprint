@@ -18,5 +18,6 @@
     ],
     "lexers": [
         "BlueprintExtensions\\Auditing\\Lexers\\AuditingLexer"
-    ]
+    ],
+    "dashboard_plugin": "Blueprint\\Plugins\\BlueprintAuditing\\AuditingDashboardPlugin"
 } 

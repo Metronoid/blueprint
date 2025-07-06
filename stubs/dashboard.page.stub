@@ -1,0 +1,71 @@
+import React, { useState, useEffect } from 'react';
+import { Head } from '@inertiajs/react';
+import DashboardLayout from '../Layouts/DashboardLayout';
+
+export default function {{ dashboardName }}({ auth, dashboard, widgets }) {
+  const [widgetData, setWidgetData] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/dashboard/{{ dashboardName }}');
+      const data = await response.json();
+      setWidgetData(data.widgets);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+{{ api }}
+
+  if (loading) {
+    return (
+      <DashboardLayout user={auth.user}>
+        <div className="loading">Loading dashboard...</div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout user={auth.user}>
+      <Head title="{{ dashboardTitle }}" />
+      
+      <div className="dashboard-header">
+        <h1>{{ dashboardTitle }}</h1>
+        <p>{{ dashboardDescription }}</p>
+      </div>
+      
+      <div className="dashboard-grid">
+{{ widgets }}
+      </div>
+      
+      <style jsx>{`
+        .dashboard-header {
+          margin-bottom: 2rem;
+        }
+        
+        .dashboard-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 1.5rem;
+        }
+        
+        .loading {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 50vh;
+          font-size: 1.2rem;
+          color: #6b7280;
+        }
+      `}</style>
+    </DashboardLayout>
+  );
+} 

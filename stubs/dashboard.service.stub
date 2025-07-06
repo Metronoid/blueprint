@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Services\Dashboard;
+
+use Illuminate\Support\Facades\DB;
+{{ modelQueries }}
+
+class {{ dashboardName }}Service
+{
+    public function getDashboardData(): array
+    {
+        return [
+{{ widgetMethods }}
+        ];
+    }
+
+{{ widgetMethods }}
+} 

@@ -1,0 +1,115 @@
+import React from 'react';
+
+export default function {{ widgetName }}Widget({ data, config }) {
+  const renderWidget = () => {
+    switch (config.type) {
+      case 'chart':
+        return <ChartWidget data={data} config={config} />;
+      case 'table':
+        return <TableWidget data={data} config={config} />;
+      case 'metric':
+        return <MetricWidget data={data} config={config} />;
+      case 'list':
+        return <ListWidget data={data} config={config} />;
+      default:
+        return <div>Unknown widget type: {config.type}</div>;
+    }
+  };
+
+  return (
+    <div className="dashboard-widget">
+      <div className="widget-header">
+        <h3>{{ widgetTitle }}</h3>
+        <div className="widget-actions">
+{{ actions }}
+        </div>
+      </div>
+      
+      <div className="widget-content">
+        {renderWidget()}
+      </div>
+      
+      <style jsx>{`
+        .dashboard-widget {
+          background: white;
+          border-radius: 0.5rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+        }
+        
+        .widget-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem;
+          border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .widget-header h3 {
+          margin: 0;
+          font-size: 1.1rem;
+          font-weight: 600;
+        }
+        
+        .widget-content {
+          padding: 1rem;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Widget type components
+function ChartWidget({ data, config }) {
+  return (
+    <div className="chart-widget">
+      <p>Chart widget - {data?.length || 0} data points</p>
+    </div>
+  );
+}
+
+function TableWidget({ data, config }) {
+  return (
+    <div className="table-widget">
+      <table>
+        <thead>
+          <tr>
+            {data?.[0] && Object.keys(data[0]).map(key => (
+              <th key={key}>{key}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data?.map((row, index) => (
+            <tr key={index}>
+              {Object.values(row).map((value, i) => (
+                <td key={i}>{value}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MetricWidget({ data, config }) {
+  return (
+    <div className="metric-widget">
+      <div className="metric-value">{data?.value || 0}</div>
+      <div className="metric-label">{config.title}</div>
+    </div>
+  );
+}
+
+function ListWidget({ data, config }) {
+  return (
+    <div className="list-widget">
+      <ul>
+        {data?.map((item, index) => (
+          <li key={index}>{item.name || item.title || item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+} 

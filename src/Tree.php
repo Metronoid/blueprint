@@ -57,6 +57,11 @@ class Tree
         return $this->tree['frontend'] ?? [];
     }
 
+    public function dashboards(): array
+    {
+        return $this->tree['dashboards'] ?? [];
+    }
+
     public function modelForContext(string $context, bool $throw = false)
     {
         if (isset($this->models[Str::studly($context)])) {
