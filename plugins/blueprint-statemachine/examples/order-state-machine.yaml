@@ -1,0 +1,90 @@
+models:
+  Order:
+    columns:
+      customer_id: id foreign:users
+      total: decimal:8,2
+      status: enum:pending,processing,shipped,delivered,cancelled
+    
+    state_machine:
+      field: status
+      initial: pending
+      
+      transitions:
+        process: [pending, processing]
+        ship: [processing, shipped]
+        deliver: [shipped, delivered]
+        cancel: [pending, processing, cancelled]
+        
+      guards:
+        ship: hasValidAddress
+        deliver: isShipped
+        cancel: canBeCancelled
+        
+      callbacks:
+        before_process: validatePayment
+        after_process: sendProcessingNotification
+        after_ship: sendShippingNotification
+        after_deliver: sendDeliveryNotification
+        
+      states:
+        pending:
+          label: "Pending"
+          color: "yellow"
+          description: "Order is awaiting processing"
+        processing:
+          label: "Processing"
+          color: "blue"
+          description: "Order is being processed"
+        shipped:
+          label: "Shipped"
+          color: "purple"
+          description: "Order has been shipped"
+        delivered:
+          label: "Delivered"
+          color: "green"
+          description: "Order has been delivered"
+        cancelled:
+          label: "Cancelled"
+          color: "red"
+          description: "Order has been cancelled"
+
+controllers:
+  Order:
+    index:
+      query: all
+      render: orders.index with:orders
+      
+    show:
+      find: order
+      render: orders.show with:order
+      
+    store:
+      validate: order
+      save: order
+      redirect: order.show with:order
+      
+    update:
+      find: order
+      validate: order
+      update: order
+      redirect: order.show with:order
+      
+    process:
+      find: order
+      transition: process             # Uses state machine
+      redirect: order.show with:order
+      
+    ship:
+      find: order
+      transition: ship                # Uses state machine
+      redirect: order.show with:order
+      
+    deliver:
+      find: order
+      transition: deliver             # Uses state machine
+      redirect: order.show with:order
+      
+    cancel:
+      find: order
+      transition: cancel              # Uses state machine
+      redirect: order.show with:order 

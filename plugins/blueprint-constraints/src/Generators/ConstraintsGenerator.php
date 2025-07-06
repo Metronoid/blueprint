@@ -20,7 +20,7 @@ class ConstraintsGenerator implements PluginGenerator
     /** @var array */
     protected $config = [];
 
-    public function __construct(Filesystem $filesystem, Plugin $plugin = null)
+    public function __construct(Filesystem $filesystem, ?Plugin $plugin = null)
     {
         $this->filesystem = $filesystem;
         $this->plugin = $plugin;

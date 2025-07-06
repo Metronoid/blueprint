@@ -7,10 +7,11 @@ use BlueprintExtensions\Constraints\Generators\ConstraintsGenerator;
 use Blueprint\Tree;
 use Illuminate\Filesystem\Filesystem;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class ConstraintsExtensionTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function it_parses_inline_constraint_syntax()
     {
         $lexer = new ConstraintsLexer();
@@ -55,7 +56,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertEquals(5, $productConstraints['rating'][0]['max']);
     }
 
-    /** @test */
+    #[Test]
     public function it_parses_model_level_constraints()
     {
         $lexer = new ConstraintsLexer();
@@ -103,7 +104,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertEquals(['Engineering', 'Marketing', 'Sales'], $employeeConstraints['department'][0]['values']);
     }
 
-    /** @test */
+    #[Test]
     public function it_parses_string_constraints()
     {
         $lexer = new ConstraintsLexer();
@@ -151,7 +152,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertEquals('ip', $userConstraints['ip_address'][0]['type']);
     }
 
-    /** @test */
+    #[Test]
     public function it_parses_date_constraints()
     {
         $lexer = new ConstraintsLexer();
@@ -185,7 +186,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertEquals('date', $eventConstraints['created_at'][0]['type']);
     }
 
-    /** @test */
+    #[Test]
     public function it_parses_list_constraints()
     {
         $lexer = new ConstraintsLexer();
@@ -214,7 +215,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertEquals(['restricted', 'banned'], $productConstraints['category'][0]['values']);
     }
 
-    /** @test */
+    #[Test]
     public function it_preserves_original_column_definitions()
     {
         $lexer = new ConstraintsLexer();
@@ -242,7 +243,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertArrayHasKey('quantity', $productConstraints);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_database_constraints()
     {
         $filesystem = $this->createMock(Filesystem::class);
@@ -295,7 +296,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertEquals('created', reset($output));
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_validation_rules()
     {
         $filesystem = $this->createMock(Filesystem::class);
@@ -351,7 +352,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertNotEmpty($output);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_types_correctly()
     {
         $filesystem = new Filesystem();
@@ -362,7 +363,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertContains('constraints', $types);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_empty_tree()
     {
         $filesystem = new Filesystem();
@@ -377,7 +378,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertEmpty($output);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_complex_regex_patterns()
     {
         $lexer = new ConstraintsLexer();
@@ -404,7 +405,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertEquals('^[A-Z]\d[A-Z] \d[A-Z]\d$', $userConstraints['postal_code'][0]['pattern']);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_multiple_constraints_on_single_column()
     {
         $lexer = new ConstraintsLexer();
@@ -431,7 +432,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertCount(2, $userConstraints['email']); // email, regex
     }
 
-    /** @test */
+    #[Test]
     public function it_supports_structured_format_with_columns_key()
     {
         $lexer = new ConstraintsLexer();
@@ -485,7 +486,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertEquals('integer min:0 max:1000', $tokens['models']['Product']['columns']['quantity']);
     }
 
-    /** @test */
+    #[Test]
     public function it_supports_structured_format_with_model_level_constraints()
     {
         $lexer = new ConstraintsLexer();
@@ -570,7 +571,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertArrayHasKey('relationships', $tokens['models']['Employee']);
     }
 
-    /** @test */
+    #[Test]
     public function it_supports_mixed_inline_and_model_level_constraints_in_structured_format()
     {
         $lexer = new ConstraintsLexer();
@@ -625,7 +626,7 @@ class ConstraintsExtensionTest extends TestCase
         $this->assertEquals('decimal:5,2', $tokens['models']['Order']['columns']['discount']);
     }
 
-    /** @test */
+    #[Test]
     public function it_maintains_backward_compatibility_with_legacy_format()
     {
         $lexer = new ConstraintsLexer();

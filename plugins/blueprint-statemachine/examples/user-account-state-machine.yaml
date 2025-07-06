@@ -1,0 +1,76 @@
+models:
+  User:
+    columns:
+      name: string
+      email: string unique
+      password: string
+      account_status: enum:pending,active,suspended,deactivated
+    
+    state_machine:
+      field: account_status
+      initial: pending
+      
+      transitions:
+        activate: [pending, active]
+        suspend: [active, suspended]
+        reactivate: [suspended, active]
+        deactivate: [active, suspended, deactivated]
+        
+      guards:
+        activate: hasVerifiedEmail
+        suspend: hasValidReason
+        deactivate: canBeDeactivated
+        
+      callbacks:
+        before_activate: sendWelcomeEmail
+        after_activate: logAccountActivation
+        after_suspend: notifyAccountSuspension
+        after_deactivate: cleanupUserData
+        
+      states:
+        pending:
+          label: "Pending Verification"
+          color: "orange"
+          description: "Account is awaiting email verification"
+        active:
+          label: "Active"
+          color: "green"
+          description: "Account is active and in good standing"
+        suspended:
+          label: "Suspended"
+          color: "red"
+          description: "Account has been temporarily suspended"
+        deactivated:
+          label: "Deactivated"
+          color: "gray"
+          description: "Account has been permanently deactivated"
+
+controllers:
+  User:
+    index:
+      query: all
+      render: users.index with:users
+      
+    show:
+      find: user
+      render: users.show with:user
+      
+    activate:
+      find: user
+      transition: activate
+      redirect: user.show with:user
+      
+    suspend:
+      find: user
+      transition: suspend
+      redirect: user.show with:user
+      
+    reactivate:
+      find: user
+      transition: reactivate
+      redirect: user.show with:user
+      
+    deactivate:
+      find: user
+      transition: deactivate
+      redirect: user.show with:user 

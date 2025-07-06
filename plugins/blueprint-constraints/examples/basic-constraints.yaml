@@ -18,6 +18,8 @@ models:
       slug: string:100 alpha_num
       is_active: boolean
       sort_order: integer min:0
+    relationships:
+      hasMany: Product
 
   User:
     columns:

@@ -1,0 +1,24 @@
+{
+    "name": "blueprint-statemachine",
+    "version": "1.0.0",
+    "description": "A powerful Blueprint extension that adds state machine functionality to Laravel models",
+    "author": "Blueprint Extensions",
+    "class": "BlueprintExtensions\\StateMachine\\BlueprintStateMachinePlugin",
+    "dependencies": {
+        "laravel-shift/blueprint": "^2.0"
+    },
+    "config": {
+        "generate_trait": true,
+        "generate_events": true,
+        "generate_observers": true,
+        "generate_middleware": true,
+        "generate_tests": true,
+        "track_state_history": true
+    },
+    "generators": [
+        "BlueprintExtensions\\StateMachine\\Generators\\StateMachineGenerator"
+    ],
+    "lexers": [
+        "BlueprintExtensions\\StateMachine\\Lexers\\StateMachineLexer"
+    ]
+} 
