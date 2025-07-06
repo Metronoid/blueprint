@@ -38,7 +38,10 @@ Blueprint comes with a set of artisan commands. The one you'll use to generate t
 php artisan blueprint:build [draft]
 ```
 
-The _draft_ file contains a [definition of the components](https://blueprint.laravelshift.com/docs/generating-components/) to generate. Let's review the following example draft file which generates some _blog_ components:
+The _draft_ file contains a [definition of the components](https://blueprint.laravelshift.com/docs/generating-components/) to generate. Blueprint supports both backend Laravel components and frontend components for React, Vue, Svelte, and TypeScript.
+
+### Backend Components
+Let's review the following example draft file which generates some _blog_ components:
 
 ```yaml
 models:
@@ -81,6 +84,37 @@ From these 20 lines of YAML, Blueprint will generate all of the following Larave
 
 _**Note:** This example assumes features within a default Laravel application such as the `User` model and `app.blade.php` layout. Otherwise, the generated tests may have failures._
 
+### Frontend Components
+Blueprint can also generate frontend components for React, Vue, Svelte, and TypeScript applications:
+
+```yaml
+frontend:
+  UserProfile:
+    framework: react
+    type: component
+    props:
+      user: User
+      isEditing: boolean
+    state:
+      formData: {}
+      isLoading: false
+    methods:
+      handleSubmit: |
+        setLoading(true);
+        await saveUser(formData);
+        setLoading(false);
+    styles:
+      '.user-profile': 
+        padding: '1rem'
+        border: '1px solid #ccc'
+    dependencies:
+      - name: useState
+        from: react
+      - name: axios
+        from: axios
+```
+
+This will generate a complete React component with TypeScript interfaces, state management, methods, and styles. Blueprint supports generating components, pages, layouts, and even API integration code.
 
 ## Documentation
 Browse the [Blueprint Docs](https://blueprint.laravelshift.com/) for full details on [defining models](https://blueprint.laravelshift.com/docs/defining-models/), [defining controllers](https://blueprint.laravelshift.com/docs/defining-controllers/), [advanced configuration](https://blueprint.laravelshift.com/docs/advanced-configuration/), and [extending Blueprint](https://blueprint.laravelshift.com/docs/extending-blueprint/).

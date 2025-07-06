@@ -14,6 +14,24 @@ class Component implements BlueprintModel
 
     private array $methods = [];
 
+    private ?string $framework = null;
+
+    private ?string $type = null;
+
+    private array $props = [];
+
+    private array $state = [];
+
+    private array $styles = [];
+
+    private array $dependencies = [];
+
+    private ?string $layout = null;
+
+    private ?string $route = null;
+
+    private array $api = [];
+
     public function __construct(string $name)
     {
         $this->name = class_basename($name);
@@ -77,5 +95,95 @@ class Component implements BlueprintModel
     public function addProperty(string $name): void
     {
         $this->properties[$name] = $name;
+    }
+
+    public function framework(): ?string
+    {
+        return $this->framework;
+    }
+
+    public function setFramework(string $framework): void
+    {
+        $this->framework = $framework;
+    }
+
+    public function type(): ?string
+    {
+        return $this->type;
+    }
+
+    public function setType(string $type): void
+    {
+        $this->type = $type;
+    }
+
+    public function props(): array
+    {
+        return $this->props;
+    }
+
+    public function setProps(array $props): void
+    {
+        $this->props = $props;
+    }
+
+    public function state(): array
+    {
+        return $this->state;
+    }
+
+    public function setState(array $state): void
+    {
+        $this->state = $state;
+    }
+
+    public function styles(): array
+    {
+        return $this->styles;
+    }
+
+    public function setStyles(array $styles): void
+    {
+        $this->styles = $styles;
+    }
+
+    public function dependencies(): array
+    {
+        return $this->dependencies;
+    }
+
+    public function setDependencies(array $dependencies): void
+    {
+        $this->dependencies = $dependencies;
+    }
+
+    public function layout(): ?string
+    {
+        return $this->layout;
+    }
+
+    public function setLayout(string $layout): void
+    {
+        $this->layout = $layout;
+    }
+
+    public function route(): ?string
+    {
+        return $this->route;
+    }
+
+    public function setRoute(string $route): void
+    {
+        $this->route = $route;
+    }
+
+    public function api(): array
+    {
+        return $this->api;
+    }
+
+    public function setApi(array $api): void
+    {
+        $this->api = $api;
     }
 }

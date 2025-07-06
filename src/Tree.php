@@ -52,6 +52,11 @@ class Tree
         return $this->tree['seeders'];
     }
 
+    public function frontend(): array
+    {
+        return $this->tree['frontend'] ?? [];
+    }
+
     public function modelForContext(string $context, bool $throw = false)
     {
         if (isset($this->models[Str::studly($context)])) {

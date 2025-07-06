@@ -173,6 +173,26 @@ return [
         'inertia_page' => \Blueprint\Generators\Statements\InertiaPageGenerator::class,
         'policy' => \Blueprint\Generators\PolicyGenerator::class,
         'layout' => \Blueprint\Generators\LayoutGenerator::class,
+        'frontend' => \Blueprint\Generators\FrontendGenerator::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Frontend Generation
+    |--------------------------------------------------------------------------
+    |
+    | Configure frontend generation settings for React, Vue, and other
+    | frontend frameworks.
+    |
+    */
+    'frontend' => [
+        'default_framework' => 'react',
+        'generate_tests' => true,
+        'generate_stories' => false,
+        'generate_css' => true,
+        'components_path' => 'resources/js/components',
+        'pages_path' => 'resources/js/Pages',
+        'layouts_path' => 'resources/js/Layouts',
     ],
 
     /*

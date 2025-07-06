@@ -94,6 +94,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             $blueprint->registerLexer(new \Blueprint\Lexers\ModelLexer);
             $blueprint->registerLexer(new \Blueprint\Lexers\SeederLexer);
             $blueprint->registerLexer(new \Blueprint\Lexers\ControllerLexer(new \Blueprint\Lexers\StatementLexer));
+            $blueprint->registerLexer(new \Blueprint\Lexers\FrontendLexer);
 
             // Register plugin lexers if plugin system is available
             if ($app->bound(PluginManager::class)) {

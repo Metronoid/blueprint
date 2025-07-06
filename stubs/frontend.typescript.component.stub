@@ -1,0 +1,19 @@
+import React, { useState } from 'react';
+{{ dependencies }}
+
+interface {{ componentName }}Props {
+{{ props }}
+}
+
+export default function {{ componentName }}({ {{ componentNameCamel }}Props }: {{ componentName }}Props) {
+{{ state }}
+
+{{ methods }}
+
+  return (
+    <div className="{{ componentNameKebab }}">
+      <h1>{{ componentName }}</h1>
+      {/* Add your component content here */}
+    </div>
+  );
+} 

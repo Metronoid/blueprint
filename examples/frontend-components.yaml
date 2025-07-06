@@ -1,0 +1,89 @@
+frontend:
+  UserProfile:
+    framework: react
+    type: component
+    props:
+      user: User
+      isEditing: boolean
+      onSave: function
+    state:
+      formData: {}
+      isLoading: false
+    methods:
+      handleSubmit: |
+        setLoading(true);
+        await saveUser(formData);
+        setLoading(false);
+      handleEdit: |
+        setIsEditing(true);
+        setFormData(user);
+    styles:
+      '.user-profile': 
+        padding: '1rem'
+        border: '1px solid #ccc'
+      '.user-profile h2':
+        color: '#333'
+        marginBottom: '1rem'
+    dependencies:
+      - name: useState
+        from: react
+      - name: useEffect
+        from: react
+      - name: axios
+        from: axios
+
+  ProductCard:
+    framework: vue
+    type: component
+    props:
+      product: Product
+      showPrice: boolean
+    state:
+      isHovered: false
+      isInCart: false
+    methods:
+      addToCart: |
+        cart.add(product);
+        isInCart = true;
+      toggleHover: |
+        isHovered = !isHovered;
+    styles:
+      '.product-card':
+        border: '1px solid #ddd'
+        borderRadius: '8px'
+        padding: '1rem'
+      '.product-card:hover':
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+    api:
+      addToCart:
+        url: '/api/cart/add'
+        method: POST
+
+  TodoList:
+    framework: svelte
+    type: component
+    props:
+      todos: Todo[]
+      filter: string
+    state:
+      newTodo: ''
+      filteredTodos: []
+    methods:
+      addTodo: |
+        if (newTodo.trim()) {
+          todos = [...todos, { id: Date.now(), text: newTodo, completed: false }];
+          newTodo = '';
+        }
+      toggleTodo: |
+        todos = todos.map(todo => 
+          todo.id === id ? { ...todo, completed: !todo.completed } : todo
+        );
+    styles:
+      '.todo-list':
+        maxWidth: '500px'
+        margin: '0 auto'
+      '.todo-item':
+        display: 'flex'
+        alignItems: 'center'
+        padding: '0.5rem'
+        borderBottom: '1px solid #eee' 
