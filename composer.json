@@ -39,7 +39,8 @@
         "psr-4": {
             "Blueprint\\": "src/",
             "BlueprintExtensions\\Constraints\\": "plugins/blueprint-constraints/src/",
-            "BlueprintExtensions\\StateMachine\\": "plugins/blueprint-statemachine/src/"
+            "BlueprintExtensions\\StateMachine\\": "plugins/blueprint-statemachine/src/",
+            "BlueprintExtensions\\Auditing\\": "plugins/blueprint-auditing/src/"
         }
     },
     "autoload-dev": {

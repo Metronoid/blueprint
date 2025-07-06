@@ -1,0 +1,222 @@
+models:
+  User:
+    columns:
+      name: string:255
+      email: string:191 unique
+      email_verified_at: nullable timestamp
+      password: string
+      remember_token: string:100 nullable
+      avatar: string nullable
+      bio: text nullable
+      preferences: json nullable
+    auditing:
+      events: [created, updated]
+      exclude: [password, remember_token, email_verified_at]
+      tags: [authentication, user_management]
+      strict: true
+      threshold: 50
+    relationships:
+      hasMany: Post, Comment
+      hasMany: Post:author
+
+  Category:
+    columns:
+      name: string:100
+      slug: string:100 unique
+      description: text nullable
+      color: string:7 default:#3B82F6
+      is_active: boolean default:true
+      sort_order: integer default:0
+    auditing:
+      events: [created, updated, deleted]
+      tags: [content, taxonomy]
+      threshold: 20
+    relationships:
+      hasMany: Post
+
+  Post:
+    columns:
+      title: string:255
+      slug: string:255 unique
+      content: longtext
+      excerpt: text nullable
+      featured_image: string nullable
+      status: enum:draft,published,archived default:draft
+      published_at: nullable timestamp
+      view_count: integer default:0
+      read_time: integer nullable
+      seo_title: string:255 nullable
+      seo_description: text nullable
+      author_id: id foreign:users
+      category_id: id foreign:categories
+    auditing:
+      events: [created, updated, deleted]
+      exclude: [view_count, read_time]
+      tags: [content, editorial]
+      threshold: 100
+      strict: true
+      console: false
+      empty_values: false
+    relationships:
+      belongsTo: User:author, Category
+      hasMany: Comment
+      belongsToMany: Tag
+
+  Comment:
+    columns:
+      content: text
+      approved: boolean default:false
+      approved_at: nullable timestamp
+      approved_by: id foreign:users nullable
+      spam_score: decimal:3,2 default:0
+      author_name: string:255 nullable
+      author_email: string:191 nullable
+      author_website: string:255 nullable
+      user_id: id foreign:users nullable
+      post_id: id foreign:posts
+      parent_id: id foreign:comments nullable
+    auditing:
+      events: [created, updated]
+      include: [content, approved, spam_score, author_name, author_email]
+      tags: [moderation, user_content]
+      threshold: 200
+      strict: false
+    relationships:
+      belongsTo: User, Post, Comment:parent
+      hasMany: Comment:replies
+
+  Tag:
+    columns:
+      name: string:50 unique
+      slug: string:50 unique
+      color: string:7 default:#6B7280
+      description: text nullable
+      usage_count: integer default:0
+    auditing:
+      events: [created, updated, deleted]
+      tags: [content, taxonomy]
+      threshold: 30
+    relationships:
+      belongsToMany: Post
+
+  Media:
+    columns:
+      filename: string:255
+      original_name: string:255
+      mime_type: string:100
+      size: bigint
+      path: string:500
+      alt_text: string:255 nullable
+      caption: text nullable
+      uploaded_by: id foreign:users
+      post_id: id foreign:posts nullable
+    auditing:
+      events: [created, updated, deleted]
+      exclude: [size, path]
+      tags: [media, uploads]
+      threshold: 50
+    relationships:
+      belongsTo: User:uploader, Post
+
+controllers:
+  Post:
+    index:
+      query: all
+      render: posts.index with:posts
+      
+    show:
+      find: post
+      increment: view_count
+      render: posts.show with:post
+      
+    create:
+      render: posts.create
+      
+    store:
+      validate: post
+      save: post
+      fire: PostCreated with:post
+      redirect: post.show with:post
+      
+    edit:
+      find: post
+      render: posts.edit with:post
+      
+    update:
+      find: post
+      validate: post
+      update: post
+      fire: PostUpdated with:post
+      redirect: post.show with:post
+      
+    destroy:
+      find: post
+      delete: post
+      fire: PostDeleted with:post
+      redirect: posts.index
+      
+    publish:
+      find: post
+      update: status, published_at
+      fire: PostPublished with:post
+      redirect: post.show with:post
+      
+    archive:
+      find: post
+      update: status
+      fire: PostArchived with:post
+      redirect: post.show with:post
+
+  Comment:
+    store:
+      validate: comment
+      save: comment
+      fire: CommentPosted with:comment
+      redirect: post.show with:comment.post
+      
+    approve:
+      find: comment
+      update: approved, approved_at, approved_by
+      fire: CommentApproved with:comment
+      redirect: admin.comments
+      
+    disapprove:
+      find: comment
+      update: approved
+      fire: CommentDisapproved with:comment
+      redirect: admin.comments
+      
+    destroy:
+      find: comment
+      delete: comment
+      fire: CommentDeleted with:comment
+      redirect: post.show with:comment.post
+
+  Admin\Post:
+    audit_history:
+      find: post
+      query: post.audits order:created_at,desc limit:50
+      render: admin.posts.audit-history with:post,audits
+      
+    rewind_preview:
+      find: post
+      find: audit
+      render: admin.posts.rewind-preview with:post,audit
+      
+    perform_rewind:
+      find: post
+      find: audit
+      flash: 'Post reverted to previous version'
+      redirect: admin.posts.show with:post
+
+  Admin\Comment:
+    audit_history:
+      find: comment
+      query: comment.audits order:created_at,desc limit:30
+      render: admin.comments.audit-history with:comment,audits
+      
+    bulk_approve:
+      query: comments where:approved,false
+      update: approved, approved_at, approved_by
+      flash: 'Comments approved successfully'
+      redirect: admin.comments 

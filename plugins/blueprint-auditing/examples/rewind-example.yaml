@@ -1,0 +1,359 @@
+models:
+  # Basic rewind functionality
+  User:
+    columns:
+      name: string:255
+      email: string:191 unique
+      password: string
+      email_verified_at: nullable timestamp
+      remember_token: string:100 nullable
+      avatar: string nullable
+      bio: text nullable
+      preferences: json nullable
+    auditing:
+      events: [created, updated]
+      exclude: [password, remember_token, email_verified_at]
+      rewind:
+        enabled: true
+        exclude: [password, remember_token, email_verified_at]
+        max_steps: 10
+        validate: true
+    relationships:
+      hasMany: Order, Review
+
+  # E-commerce product with detailed rewind configuration
+  Product:
+    columns:
+      name: string:255
+      sku: string:50 unique
+      price: decimal:8,2
+      cost_price: decimal:8,2
+      stock: integer
+      description: text nullable
+      is_active: boolean default:true
+      metadata: json nullable
+      category_id: id foreign:categories
+      brand_id: id foreign:brands nullable
+    auditing:
+      events: [created, updated, deleted]
+      tags: [product, inventory]
+      threshold: 100
+      rewind:
+        enabled: true
+        methods: [rewindTo, rewindToDate, rewindSteps, rewindToPrevious]
+        include: [name, sku, price, cost_price, stock, is_active, description]
+        validate: true
+        max_steps: 20
+        backup: true
+        events: [rewound, product_reverted]
+    relationships:
+      belongsTo: Category, Brand
+      hasMany: OrderItem, Review
+
+  # Order management with restricted rewind
+  Order:
+    columns:
+      order_number: string:50 unique
+      customer_id: id foreign:customers
+      total: decimal:10,2
+      status: enum:pending,processing,shipped,delivered,cancelled
+      notes: text nullable
+      internal_notes: text nullable
+      payment_status: enum:pending,paid,failed,refunded
+      shipped_at: nullable timestamp
+      tracking_number: string:100 nullable
+    auditing:
+      events: [created, updated]
+      exclude: [internal_notes]
+      tags: [order, sales]
+      rewind:
+        enabled: true
+        methods: [rewindTo, rewindSteps]  # Limited methods for security
+        exclude: [internal_notes, payment_status, shipped_at, tracking_number]
+        validate: true
+        max_steps: 5
+        events: [rewound, order_reverted]
+        backup: true
+    relationships:
+      belongsTo: Customer
+      hasMany: OrderItem
+
+  # Customer data with comprehensive auditing
+  Customer:
+    columns:
+      name: string:255
+      email: string:191 unique
+      phone: string:20 nullable
+      address: json nullable
+      preferences: json nullable
+      credit_limit: decimal:10,2 default:0
+      loyalty_points: integer default:0
+      is_active: boolean default:true
+    auditing:
+      events: [created, updated, deleted, restored]
+      tags: [customer, crm]
+      strict: true
+      rewind:
+        enabled: true
+        validate: true
+        exclude: [preferences, loyalty_points]  # Don't rewind user preferences
+        backup: true
+        max_steps: 15
+    relationships:
+      hasMany: Order, Review
+
+  # Blog post with content versioning
+  Post:
+    columns:
+      title: string:255
+      slug: string:255 unique
+      content: longtext
+      excerpt: text nullable
+      status: enum:draft,published,archived
+      published_at: nullable timestamp
+      author_id: id foreign:users
+      category_id: id foreign:categories
+      view_count: integer default:0
+      seo_title: string:255 nullable
+      seo_description: text nullable
+    auditing:
+      events: [created, updated, deleted]
+      include: [title, slug, content, excerpt, status, seo_title, seo_description]
+      tags: [content, blog]
+      threshold: 50
+      rewind:
+        enabled: true
+        include: [title, slug, content, excerpt, status, seo_title, seo_description]  # Don't rewind metrics
+        max_steps: 25
+        validate: false  # Allow quick content reverts
+        backup: true
+    relationships:
+      belongsTo: User:author, Category
+
+  # Financial transaction with strict controls
+  Transaction:
+    columns:
+      transaction_id: string:50 unique
+      account_id: id foreign:accounts
+      amount: decimal:15,2
+      type: enum:debit,credit,transfer
+      description: string:255
+      reference: string:100 nullable
+      processed_at: timestamp
+      reconciled: boolean default:false
+      metadata: json nullable
+    auditing:
+      events: [created, updated]
+      tags: [transaction, financial, audit]
+      console: true
+      strict: true
+      threshold: 1000  # Keep many financial records
+      rewind:
+        enabled: true
+        validate: true  # Always validate financial operations
+        methods: [rewindTo]  # Only allow specific audit rewind
+        exclude: [processed_at, reconciled]  # Don't rewind system fields
+        max_steps: 3  # Very limited for security
+        backup: true
+        events: [rewound, financial_revert, compliance_alert]
+    relationships:
+      belongsTo: Account
+
+  # Simple category with basic rewind
+  Category:
+    columns:
+      name: string:100
+      slug: string:100 unique
+      description: text nullable
+      sort_order: integer default:0
+      is_active: boolean default:true
+    auditing:
+      events: [created, updated, deleted]
+      rewind: true  # Shorthand syntax
+    relationships:
+      hasMany: Product, Post
+
+  # Comment moderation with selective rewind
+  Comment:
+    columns:
+      content: text
+      author_name: string:255
+      author_email: string:191
+      approved: boolean default:false
+      spam_score: decimal:3,2 default:0
+      moderated_by: nullable id foreign:users
+      moderated_at: nullable timestamp
+      post_id: id foreign:posts
+      parent_id: id foreign:comments nullable
+    auditing:
+      events: [created, updated]
+      include: [content, approved, spam_score, author_name, author_email]
+      rewind:
+        enabled: true
+        include: [content, approved]  # Only rewind content and approval
+        max_steps: 10
+        validate: true
+    relationships:
+      belongsTo: User:moderator, Post, Comment:parent
+
+  # Inventory item with stock tracking
+  InventoryItem:
+    columns:
+      product_id: id foreign:products
+      warehouse_id: id foreign:warehouses
+      quantity: integer
+      reserved_quantity: integer default:0
+      location: string:100 nullable
+      last_counted_at: nullable timestamp
+      minimum_stock: integer default:0
+      maximum_stock: integer nullable
+    auditing:
+      events: [created, updated]
+      tags: [inventory, stock]
+      rewind:
+        enabled: true
+        include: [quantity, reserved_quantity, location, minimum_stock, maximum_stock]
+        validate: true  # Validate stock changes
+        max_steps: 15
+        backup: true
+    relationships:
+      belongsTo: Product, Warehouse
+
+  # Brand management
+  Brand:
+    columns:
+      name: string:100
+      slug: string:100 unique
+      logo: string:255 nullable
+      description: text nullable
+      website: string:255 nullable
+      is_active: boolean default:true
+    auditing:
+      events: [created, updated, deleted]
+      tags: [brand, marketing]
+      rewind:
+        enabled: true
+        exclude: [logo]  # Don't rewind file paths
+        max_steps: 10
+    relationships:
+      hasMany: Product
+
+  # Warehouse management
+  Warehouse:
+    columns:
+      name: string:100
+      code: string:20 unique
+      address: text
+      contact_person: string:255 nullable
+      contact_email: string:191 nullable
+      contact_phone: string:20 nullable
+      is_active: boolean default:true
+    auditing:
+      events: [created, updated, deleted]
+      tags: [warehouse, logistics]
+      rewind:
+        enabled: true
+        max_steps: 8
+    relationships:
+      hasMany: InventoryItem
+
+  # Account management for transactions
+  Account:
+    columns:
+      account_number: string:50 unique
+      name: string:255
+      type: enum:checking,savings,credit,investment
+      balance: decimal:15,2 default:0
+      currency: string:3 default:USD
+      is_active: boolean default:true
+      metadata: json nullable
+    auditing:
+      events: [created, updated]
+      tags: [account, financial]
+      strict: true
+      rewind:
+        enabled: true
+        exclude: [balance]  # Don't rewind balance directly
+        validate: true
+        max_steps: 5
+        backup: true
+    relationships:
+      hasMany: Transaction
+
+controllers:
+  # Example controller actions for rewind functionality
+  Admin\Product:
+    audit_history:
+      find: product
+      query: product.audits order:created_at,desc limit:50
+      render: admin.products.audit-history with:product,audits
+      
+    rewind_preview:
+      find: product
+      find: audit
+      render: admin.products.rewind-preview with:product,audit
+      
+    perform_rewind:
+      find: product
+      find: audit
+      flash: 'Product reverted to previous version'
+      redirect: admin.products.show with:product
+
+  # Customer service rewind actions
+  Admin\Customer:
+    audit_history:
+      find: customer
+      query: customer.audits order:created_at,desc limit:30
+      render: admin.customers.audit-history with:customer,audits
+      
+    rewind_to_date:
+      find: customer
+      validate: date
+      flash: 'Customer data reverted to specified date'
+      redirect: admin.customers.show with:customer
+
+  # Content management with rewind
+  Admin\Post:
+    audit_history:
+      find: post
+      query: post.audits order:created_at,desc limit:100
+      render: admin.posts.audit-history with:post,audits
+      
+    rewind_content:
+      find: post
+      find: audit
+      flash: 'Post content reverted to previous version'
+      redirect: admin.posts.show with:post
+      
+    compare_versions:
+      find: post
+      find: audit1
+      find: audit2
+      render: admin.posts.compare-versions with:post,audit1,audit2
+
+  # Financial transaction rewind (restricted)
+  Admin\Transaction:
+    audit_history:
+      find: transaction
+      query: transaction.audits order:created_at,desc limit:20
+      render: admin.transactions.audit-history with:transaction,audits
+      
+    rewind_transaction:
+      find: transaction
+      find: audit
+      authorize: can_rewind_financial
+      flash: 'Transaction reverted (audit trail maintained)'
+      redirect: admin.transactions.show with:transaction
+
+  # Inventory management with rewind
+  Admin\Inventory:
+    audit_history:
+      find: inventory_item
+      query: inventory_item.audits order:created_at,desc limit:40
+      render: admin.inventory.audit-history with:inventory_item,audits
+      
+    rewind_stock:
+      find: inventory_item
+      find: audit
+      flash: 'Stock levels reverted to previous state'
+      redirect: admin.inventory.show with:inventory_item 

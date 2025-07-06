@@ -1,0 +1,50 @@
+{
+    "name": "blueprint-extensions/auditing",
+    "description": "Laravel Blueprint extension for Laravel Auditing package integration",
+    "type": "blueprint-plugin",
+    "license": "MIT",
+    "keywords": ["blueprint-plugin", "laravel", "auditing", "audit"],
+    "authors": [
+        {
+            "name": "Blueprint Extensions",
+            "email": "extensions@blueprint.dev"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^10.0|^11.0|^12.0",
+        "laravel-shift/blueprint": "^2.0",
+        "owen-it/laravel-auditing": "^13.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "BlueprintExtensions\\Auditing\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BlueprintExtensions\\Auditing\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "BlueprintExtensions\\Auditing\\BlueprintAuditingServiceProvider"
+            ]
+        },
+        "blueprint-plugin": {
+            "class": "BlueprintExtensions\\Auditing\\BlueprintAuditingPlugin",
+            "config": {
+                "generate_auditing": true,
+                "generate_rewind": true,
+                "generate_migrations": true,
+                "generate_custom_models": true
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+} 

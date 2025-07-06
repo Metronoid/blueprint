@@ -1,0 +1,377 @@
+models:
+  # Document management system with version control
+  Document:
+    columns:
+      title: string:255
+      filename: string:255
+      file_path: string:500
+      file_size: bigint
+      mime_type: string:100
+      version: integer default:1
+      status: enum:draft,review,approved,archived
+      content_hash: string:64
+      uploaded_by: id foreign:users
+      department_id: id foreign:departments
+      tags: json nullable
+      metadata: json nullable
+    auditing:
+      events: [created, updated, deleted, restored]
+      exclude: [file_path, file_size, content_hash]
+      include: [title, filename, version, status, tags, metadata]
+      tags: [document, version_control]
+      strict: true
+      threshold: 0  # Audit every change
+      console: true
+      empty_values: true
+      rewind:
+        enabled: true
+        methods: [rewindTo, rewindToDate, rewindSteps, rewindToPrevious]
+        include: [title, filename, version, status, tags, metadata]
+        validate: true
+        max_steps: 50
+        backup: true
+        events: [rewound, document_reverted, version_restored]
+    relationships:
+      belongsTo: User:uploader, Department
+      hasMany: DocumentVersion, DocumentComment
+
+  # Document version tracking
+  DocumentVersion:
+    columns:
+      document_id: id foreign:documents
+      version_number: integer
+      title: string:255
+      filename: string:255
+      file_path: string:500
+      file_size: bigint
+      content_hash: string:64
+      created_by: id foreign:users
+      change_summary: text nullable
+      approved_by: id foreign:users nullable
+      approved_at: nullable timestamp
+    auditing:
+      events: [created, updated]
+      exclude: [file_path, file_size, content_hash]
+      tags: [document_version, change_tracking]
+      strict: true
+      rewind:
+        enabled: true
+        include: [title, filename, change_summary]
+        validate: true
+        max_steps: 10
+    relationships:
+      belongsTo: Document, User:creator, User:approver
+
+  # User activity tracking
+  UserActivity:
+    columns:
+      user_id: id foreign:users
+      activity_type: enum:login,logout,create,update,delete,export,import
+      description: string:500
+      ip_address: string:45
+      user_agent: text
+      session_id: string:255 nullable
+      metadata: json nullable
+      created_at: timestamp
+    auditing:
+      events: [created]
+      tags: [user_activity, security]
+      strict: true
+      threshold: 0
+      console: true
+      rewind:
+        enabled: false  # Don't allow rewinding activity logs
+    relationships:
+      belongsTo: User
+
+  # Configuration management
+  SystemConfig:
+    columns:
+      key: string:255 unique
+      value: text
+      type: enum:string,integer,boolean,json,array
+      description: text nullable
+      is_public: boolean default:false
+      category: string:100 default:general
+      updated_by: id foreign:users
+      updated_at: timestamp
+    auditing:
+      events: [created, updated, deleted]
+      tags: [system_config, administration]
+      strict: true
+      threshold: 0
+      console: true
+      rewind:
+        enabled: true
+        methods: [rewindTo, rewindToDate]
+        validate: true
+        max_steps: 20
+        backup: true
+        events: [rewound, config_reverted]
+    relationships:
+      belongsTo: User:updater
+
+  # Workflow management
+  Workflow:
+    columns:
+      name: string:255
+      description: text nullable
+      status: enum:active,inactive,draft
+      steps: json
+      triggers: json nullable
+      conditions: json nullable
+      created_by: id foreign:users
+      updated_by: id foreign:users
+    auditing:
+      events: [created, updated, deleted]
+      tags: [workflow, business_logic]
+      strict: true
+      rewind:
+        enabled: true
+        include: [name, description, status, steps, triggers, conditions]
+        validate: true
+        max_steps: 15
+        backup: true
+    relationships:
+      belongsTo: User:creator, User:updater
+      hasMany: WorkflowInstance
+
+  # Workflow instance tracking
+  WorkflowInstance:
+    columns:
+      workflow_id: id foreign:workflows
+      entity_type: string:255
+      entity_id: bigint
+      current_step: integer default:1
+      status: enum:running,completed,failed,cancelled
+      data: json nullable
+      started_by: id foreign:users
+      completed_by: id foreign:users nullable
+      started_at: timestamp
+      completed_at: nullable timestamp
+    auditing:
+      events: [created, updated]
+      tags: [workflow_instance, process_tracking]
+      strict: true
+      rewind:
+        enabled: true
+        include: [current_step, status, data]
+        validate: true
+        max_steps: 10
+    relationships:
+      belongsTo: Workflow, User:starter, User:completer
+
+  # API access logging
+  ApiLog:
+    columns:
+      endpoint: string:255
+      method: enum:GET,POST,PUT,PATCH,DELETE
+      user_id: id foreign:users nullable
+      api_key_id: id foreign:api_keys nullable
+      request_data: json nullable
+      response_data: json nullable
+      status_code: integer
+      response_time: integer  # milliseconds
+      ip_address: string:45
+      user_agent: text
+      created_at: timestamp
+    auditing:
+      events: [created]
+      exclude: [request_data, response_data]  # Don't audit sensitive data
+      tags: [api_log, performance]
+      strict: true
+      threshold: 0
+      console: true
+      rewind:
+        enabled: false  # Don't allow rewinding API logs
+    relationships:
+      belongsTo: User, ApiKey
+
+  # Data import/export tracking
+  DataOperation:
+    columns:
+      operation_type: enum:import,export,backup,restore
+      entity_type: string:255
+      filename: string:255
+      file_path: string:500
+      file_size: bigint
+      records_count: integer
+      status: enum:pending,processing,completed,failed
+      error_message: text nullable
+      metadata: json nullable
+      started_by: id foreign:users
+      completed_by: id foreign:users nullable
+      started_at: timestamp
+      completed_at: nullable timestamp
+    auditing:
+      events: [created, updated]
+      exclude: [file_path, file_size, error_message]
+      tags: [data_operation, batch_processing]
+      strict: true
+      rewind:
+        enabled: true
+        include: [status, records_count, metadata]
+        validate: true
+        max_steps: 5
+    relationships:
+      belongsTo: User:starter, User:completer
+
+  # Notification tracking
+  Notification:
+    columns:
+      type: enum:email,sms,push,webhook
+      recipient: string:255
+      subject: string:255 nullable
+      content: text
+      status: enum:pending,sent,failed,delivered,read
+      sent_at: nullable timestamp
+      delivered_at: nullable timestamp
+      read_at: nullable timestamp
+      metadata: json nullable
+      created_by: id foreign:users nullable
+    auditing:
+      events: [created, updated]
+      exclude: [content]  # Don't audit message content
+      tags: [notification, communication]
+      strict: true
+      rewind:
+        enabled: true
+        include: [status, sent_at, delivered_at, read_at]
+        validate: true
+        max_steps: 8
+    relationships:
+      belongsTo: User:sender
+
+  # Department management
+  Department:
+    columns:
+      name: string:255
+      code: string:20 unique
+      description: text nullable
+      manager_id: id foreign:users nullable
+      parent_id: id foreign:departments nullable
+      is_active: boolean default:true
+      metadata: json nullable
+    auditing:
+      events: [created, updated, deleted]
+      tags: [department, organization]
+      rewind:
+        enabled: true
+        exclude: [parent_id]  # Don't rewind hierarchy changes
+        max_steps: 12
+    relationships:
+      belongsTo: User:manager, Department:parent
+      hasMany: User, Document
+
+  # API key management
+  ApiKey:
+    columns:
+      name: string:255
+      key_hash: string:255
+      permissions: json
+      is_active: boolean default:true
+      expires_at: nullable timestamp
+      last_used_at: nullable timestamp
+      created_by: id foreign:users
+    auditing:
+      events: [created, updated, deleted]
+      exclude: [key_hash]  # Don't audit the actual key
+      tags: [api_key, security]
+      strict: true
+      rewind:
+        enabled: true
+        include: [name, permissions, is_active, expires_at]
+        validate: true
+        max_steps: 8
+    relationships:
+      belongsTo: User:creator
+      hasMany: ApiLog
+
+controllers:
+  # Document management with version control
+  Admin\Document:
+    audit_history:
+      find: document
+      query: document.audits order:created_at,desc limit:100
+      render: admin.documents.audit-history with:document,audits
+      
+    version_history:
+      find: document
+      query: document.versions order:version_number,desc
+      render: admin.documents.version-history with:document,versions
+      
+    restore_version:
+      find: document
+      find: version
+      flash: 'Document restored to version {version.version_number}'
+      redirect: admin.documents.show with:document
+      
+    compare_versions:
+      find: document
+      find: version1
+      find: version2
+      render: admin.documents.compare-versions with:document,version1,version2
+
+  # System configuration management
+  Admin\SystemConfig:
+    audit_history:
+      find: config
+      query: config.audits order:created_at,desc limit:50
+      render: admin.config.audit-history with:config,audits
+      
+    restore_config:
+      find: config
+      find: audit
+      flash: 'Configuration restored to previous state'
+      redirect: admin.config.show with:config
+      
+    bulk_restore:
+      query: configs where:category,general
+      flash: 'General configurations restored'
+      redirect: admin.config.index
+
+  # Workflow management
+  Admin\Workflow:
+    audit_history:
+      find: workflow
+      query: workflow.audits order:created_at,desc limit:30
+      render: admin.workflows.audit-history with:workflow,audits
+      
+    restore_workflow:
+      find: workflow
+      find: audit
+      flash: 'Workflow restored to previous state'
+      redirect: admin.workflows.show with:workflow
+
+  # API monitoring
+  Admin\ApiLog:
+    audit_history:
+      find: api_log
+      query: api_log.audits order:created_at,desc limit:20
+      render: admin.api-logs.audit-history with:api_log,audits
+      
+    performance_report:
+      query: api_logs group:endpoint,method select:endpoint,method,avg:response_time,count:*
+      render: admin.api-logs.performance-report with:report
+
+  # Data operations monitoring
+  Admin\DataOperation:
+    audit_history:
+      find: operation
+      query: operation.audits order:created_at,desc limit:25
+      render: admin.data-operations.audit-history with:operation,audits
+      
+    retry_operation:
+      find: operation
+      flash: 'Data operation retry initiated'
+      redirect: admin.data-operations.show with:operation
+
+  # User activity monitoring
+  Admin\UserActivity:
+    user_activity_report:
+      query: user_activities group:user_id,activity_type select:user_id,activity_type,count:*
+      render: admin.user-activities.report with:report
+      
+    security_audit:
+      query: user_activities where:activity_type,login order:created_at,desc limit:100
+      render: admin.user-activities.security-audit with:activities 

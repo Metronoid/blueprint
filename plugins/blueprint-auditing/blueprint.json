@@ -1,0 +1,22 @@
+{
+    "name": "blueprint-auditing",
+    "version": "1.0.0",
+    "description": "Laravel Blueprint extension for Laravel Auditing package integration",
+    "author": "Blueprint Extensions",
+    "class": "BlueprintExtensions\\Auditing\\BlueprintAuditingPlugin",
+    "dependencies": {
+        "laravel-shift/blueprint": "^2.0"
+    },
+    "config": {
+        "generate_auditing": true,
+        "generate_rewind": true,
+        "generate_migrations": true,
+        "generate_custom_models": true
+    },
+    "generators": [
+        "BlueprintExtensions\\Auditing\\Generators\\AuditingGenerator"
+    ],
+    "lexers": [
+        "BlueprintExtensions\\Auditing\\Lexers\\AuditingLexer"
+    ]
+} 

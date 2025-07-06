@@ -1,0 +1,11 @@
+models:
+  User:
+    name: string
+    email: string unique
+    password: string
+
+  Post:
+    title: string
+    content: text
+    status: enum:draft,published
+    user_id: id foreign:users 

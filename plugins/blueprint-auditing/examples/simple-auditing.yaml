@@ -1,0 +1,85 @@
+models:
+  # Simple user model with basic auditing
+  User:
+    columns:
+      name: string:255
+      email: string:191 unique
+      password: string
+      is_active: boolean default:true
+    auditing: true  # Simple boolean enable
+    relationships:
+      hasMany: Post
+
+  # Post model with specific auditing configuration
+  Post:
+    columns:
+      title: string:255
+      content: text
+      author_id: id foreign:users
+      published_at: nullable timestamp
+    auditing:
+      events: [created, updated, deleted]
+      exclude: [published_at]
+      tags: [content]
+    relationships:
+      belongsTo: User:author
+
+  # Category with minimal auditing
+  Category:
+    columns:
+      name: string:100
+      slug: string:100 unique
+    auditing:
+      events: [created, updated]
+    relationships:
+      hasMany: Post
+
+  # Comment with selective auditing
+  Comment:
+    columns:
+      content: text
+      user_id: id foreign:users
+      post_id: id foreign:posts
+      approved: boolean default:false
+    auditing:
+      include: [content, approved]  # Only audit specific fields
+      tags: [moderation]
+    relationships:
+      belongsTo: User, Post
+
+controllers:
+  Post:
+    index:
+      query: all
+      render: posts.index with:posts
+      
+    show:
+      find: post
+      render: posts.show with:post
+      
+    store:
+      validate: post
+      save: post
+      redirect: post.show with:post
+      
+    update:
+      find: post
+      validate: post
+      update: post
+      redirect: post.show with:post
+      
+    destroy:
+      find: post
+      delete: post
+      redirect: posts.index
+
+  Comment:
+    store:
+      validate: comment
+      save: comment
+      redirect: post.show with:comment.post
+      
+    approve:
+      find: comment
+      update: approved
+      redirect: admin.comments 

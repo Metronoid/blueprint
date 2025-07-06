@@ -1,0 +1,25 @@
+models:
+  User:
+    name: string
+    email: string unique
+    password: string
+    auditing:
+      events: [created, updated]
+      exclude: [password]
+      rewind:
+        enabled: true
+        exclude: [password]
+        max_steps: 10
+        backup_before_rewind: true
+
+  Post:
+    title: string
+    content: text
+    status: enum:draft,published
+    user_id: id foreign:users
+    auditing:
+      rewind:
+        enabled: true
+        methods: [rewindTo, rewindSteps]
+        include: [title, content, status]
+        validate: true 
