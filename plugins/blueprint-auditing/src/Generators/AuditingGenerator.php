@@ -168,6 +168,11 @@ class AuditingGenerator implements PluginGenerator
                 if ($this->getConfigValue('generate_custom_models', true) && isset($auditingConfig['implementation']) && $auditingConfig['implementation'] !== 'OwenIt\\Auditing\\Models\\Audit') {
                     $output = array_merge($output, $this->generateCustomAuditModel($auditingConfig['implementation']));
                 }
+
+                // Generate observers for side effect tracking if enabled
+                if ($this->getConfigValue('generate_observers', true) && isset($auditingConfig['origin_tracking']['track_side_effects']) && $auditingConfig['origin_tracking']['track_side_effects']) {
+                    $output = array_merge($output, $this->generateObserver($modelName, $auditingConfig, $tree));
+                }
             }
         }
 
@@ -252,6 +257,13 @@ class AuditingGenerator implements PluginGenerator
             }
         }
 
+        // Add origin tracking trait if origin tracking is enabled
+        if (isset($config['origin_tracking']) && $config['origin_tracking']['enabled']) {
+            if (!str_contains($content, 'use BlueprintExtensions\\Auditing\\Traits\\OriginTrackingTrait;')) {
+                $useStatements[] = 'use BlueprintExtensions\\Auditing\\Traits\\OriginTrackingTrait;';
+            }
+        }
+
         // Add use statements
         if (!empty($useStatements)) {
             $content = preg_replace(
@@ -274,6 +286,9 @@ class AuditingGenerator implements PluginGenerator
         $traits = ['AuditableTrait'];
         if (isset($config['rewind']) && $config['rewind']['enabled']) {
             $traits[] = 'RewindableTrait';
+        }
+        if (isset($config['origin_tracking']) && $config['origin_tracking']['enabled']) {
+            $traits[] = 'OriginTrackingTrait';
         }
 
         foreach ($traits as $trait) {
@@ -399,6 +414,14 @@ class AuditingGenerator implements PluginGenerator
             $properties[] = "    protected \$auditSync = " . ($config['audit_sync'] ? 'true' : 'false') . ";";
         }
 
+        // Add origin tracking properties if origin tracking is enabled
+        if (isset($config['origin_tracking']) && $config['origin_tracking']['enabled']) {
+            $originTrackingProperties = $this->generateOriginTrackingProperties($config['origin_tracking']);
+            if ($originTrackingProperties) {
+                $properties[] = $originTrackingProperties;
+            }
+        }
+
         // Add rewind properties if rewind is enabled
         if (isset($config['rewind']) && $config['rewind']['enabled']) {
             $rewindProperties = $this->generateRewindProperties($config['rewind']);
@@ -473,6 +496,92 @@ class AuditingGenerator implements PluginGenerator
         }
 
         return "\n    // Rewind Configuration\n" . implode("\n", $properties);
+    }
+
+    /**
+     * Generate origin tracking configuration properties.
+     *
+     * @param array $originTrackingConfig The origin tracking configuration
+     * @return string The origin tracking properties as PHP code
+     */
+    protected function generateOriginTrackingProperties(array $originTrackingConfig): string
+    {
+        $properties = [];
+
+        if (isset($originTrackingConfig['enabled'])) {
+            $properties[] = "    protected \$originTrackingEnabled = " . ($originTrackingConfig['enabled'] ? 'true' : 'false') . ";";
+        }
+
+        if (isset($originTrackingConfig['track_request'])) {
+            $properties[] = "    protected \$trackRequest = " . ($originTrackingConfig['track_request'] ? 'true' : 'false') . ";";
+        }
+
+        if (isset($originTrackingConfig['track_session'])) {
+            $properties[] = "    protected \$trackSession = " . ($originTrackingConfig['track_session'] ? 'true' : 'false') . ";";
+        }
+
+        if (isset($originTrackingConfig['track_route'])) {
+            $properties[] = "    protected \$trackRoute = " . ($originTrackingConfig['track_route'] ? 'true' : 'false') . ";";
+        }
+
+        if (isset($originTrackingConfig['track_controller_action'])) {
+            $properties[] = "    protected \$trackControllerAction = " . ($originTrackingConfig['track_controller_action'] ? 'true' : 'false') . ";";
+        }
+
+        if (isset($originTrackingConfig['track_request_data'])) {
+            $properties[] = "    protected \$trackRequestData = " . ($originTrackingConfig['track_request_data'] ? 'true' : 'false') . ";";
+        }
+
+        if (isset($originTrackingConfig['track_response_data'])) {
+            $properties[] = "    protected \$trackResponseData = " . ($originTrackingConfig['track_response_data'] ? 'true' : 'false') . ";";
+        }
+
+        if (isset($originTrackingConfig['track_side_effects'])) {
+            $properties[] = "    protected \$trackSideEffects = " . ($originTrackingConfig['track_side_effects'] ? 'true' : 'false') . ";";
+        }
+
+        if (isset($originTrackingConfig['track_causality_chain'])) {
+            $properties[] = "    protected \$trackCausalityChain = " . ($originTrackingConfig['track_causality_chain'] ? 'true' : 'false') . ";";
+        }
+
+        if (isset($originTrackingConfig['group_audits'])) {
+            $properties[] = "    protected \$groupAudits = " . ($originTrackingConfig['group_audits'] ? 'true' : 'false') . ";";
+        }
+
+        if (isset($originTrackingConfig['exclude_request_fields'])) {
+            $fields = array_map(function ($field) {
+                return "'{$field}'";
+            }, $originTrackingConfig['exclude_request_fields']);
+            $properties[] = "    protected \$excludeRequestFields = [" . implode(', ', $fields) . "];";
+        }
+
+        if (isset($originTrackingConfig['include_request_fields'])) {
+            $fields = array_map(function ($field) {
+                return "'{$field}'";
+            }, $originTrackingConfig['include_request_fields']);
+            $properties[] = "    protected \$includeRequestFields = [" . implode(', ', $fields) . "];";
+        }
+
+        if (isset($originTrackingConfig['track_origin_types'])) {
+            $types = array_map(function ($type) {
+                return "'{$type}'";
+            }, $originTrackingConfig['track_origin_types']);
+            $properties[] = "    protected \$trackOriginTypes = [" . implode(', ', $types) . "];";
+        }
+
+        if (isset($originTrackingConfig['resolvers'])) {
+            $resolvers = [];
+            foreach ($originTrackingConfig['resolvers'] as $key => $value) {
+                $resolvers[] = "        '{$key}' => '{$value}'";
+            }
+            $properties[] = "    protected \$originTrackingResolvers = [\n" . implode(",\n", $resolvers) . "\n    ];";
+        }
+
+        if (empty($properties)) {
+            return '';
+        }
+
+        return "\n    // Origin Tracking Configuration\n" . implode("\n", $properties);
     }
 
     /**
@@ -567,10 +676,28 @@ return new class extends Migration
             $table->ipAddress('ip_address', 45)->nullable();
             $table->string('user_agent')->nullable();
             $table->string('tags')->nullable();
+            
+            // Origin tracking fields
+            $table->string('request_id')->nullable()->index(); // Unique request identifier
+            $table->string('session_id')->nullable()->index(); // Session identifier
+            $table->string('route_name')->nullable(); // Route name that triggered the change
+            $table->string('controller_action')->nullable(); // Controller@action that caused the change
+            $table->string('http_method')->nullable(); // HTTP method (GET, POST, etc.)
+            $table->text('request_data')->nullable(); // Request data (sanitized)
+            $table->text('response_data')->nullable(); // Response data (if applicable)
+            $table->string('origin_type')->nullable(); // 'request', 'console', 'job', 'observer', 'manual'
+            $table->string('origin_context')->nullable(); // Additional context about the origin
+            $table->json('side_effects')->nullable(); // Track related changes in other models
+            $table->string('causality_chain')->nullable(); // Chain of events that led to this change
+            $table->unsignedBigInteger('parent_audit_id')->nullable(); // Link to parent audit if this is a side effect
+            $table->string('audit_group_id')->nullable()->index(); // Group related audits together
+            
             $table->timestamps();
 
             $table->index(['user_id', 'user_type']);
             $table->index(['auditable_type', 'auditable_id']);
+            $table->index(['origin_type', 'created_at']);
+            $table->index(['audit_group_id', 'created_at']);
         });
     }
 
@@ -644,5 +771,118 @@ PHP;
     protected function getModelPath(string $modelName): string
     {
         return 'app/Models/' . $modelName . '.php';
+    }
+
+    /**
+     * Generate an observer for side effect tracking.
+     *
+     * @param string $modelName The model name
+     * @param array $auditingConfig The auditing configuration
+     * @param Tree $tree The full tree
+     * @return array Generated files
+     */
+    protected function generateObserver(string $modelName, array $auditingConfig, Tree $tree): array
+    {
+        $output = [];
+        $observerPath = 'app/Observers/' . $modelName . 'Observer.php';
+
+        if (!$this->filesystem->exists($observerPath)) {
+            $observerContent = $this->generateObserverContent($modelName, $auditingConfig);
+            $this->filesystem->put($observerPath, $observerContent);
+            $output[$observerPath] = 'created';
+        }
+
+        return $output;
+    }
+
+    /**
+     * Generate observer content.
+     *
+     * @param string $modelName The model name
+     * @param array $auditingConfig The auditing configuration
+     * @return string The observer content
+     */
+    protected function generateObserverContent(string $modelName, array $auditingConfig): string
+    {
+        $namespace = 'App\\Observers';
+        $modelClass = 'App\\Models\\' . $modelName;
+
+        return <<<PHP
+<?php
+
+namespace {$namespace};
+
+use {$modelClass};
+use OwenIt\Auditing\Models\Audit;
+use Illuminate\Support\Facades\Log;
+
+class {$modelName}Observer
+{
+    /**
+     * Handle the {$modelName} "created" event.
+     */
+    public function created({$modelName} \${$modelName}): void
+    {
+        \$this->trackSideEffect(\${$modelName}, 'created');
+    }
+
+    /**
+     * Handle the {$modelName} "updated" event.
+     */
+    public function updated({$modelName} \${$modelName}): void
+    {
+        \$this->trackSideEffect(\${$modelName}, 'updated');
+    }
+
+    /**
+     * Handle the {$modelName} "deleted" event.
+     */
+    public function deleted({$modelName} \${$modelName}): void
+    {
+        \$this->trackSideEffect(\${$modelName}, 'deleted');
+    }
+
+    /**
+     * Handle the {$modelName} "restored" event.
+     */
+    public function restored({$modelName} \${$modelName}): void
+    {
+        \$this->trackSideEffect(\${$modelName}, 'restored');
+    }
+
+    /**
+     * Track side effects of model changes.
+     *
+     * @param {$modelName} \${$modelName}
+     * @param string \$event
+     * @return void
+     */
+    protected function trackSideEffect({$modelName} \${$modelName}, string \$event): void
+    {
+        // Check if this is a side effect of another change
+        if (session()->has('audit_side_effects')) {
+            \$sideEffects = session()->get('audit_side_effects', []);
+            
+            \$sideEffect = [
+                'model' => get_class(\${$modelName}),
+                'model_id' => \${$modelName}->getKey(),
+                'event' => \$event,
+                'changes' => \${$modelName}->getChanges(),
+                'timestamp' => now()->toISOString(),
+                'causality' => 'side_effect'
+            ];
+            
+            \$sideEffects[] = \$sideEffect;
+            session()->put('audit_side_effects', \$sideEffects);
+            
+            Log::info('Side effect tracked', [
+                'model' => get_class(\${$modelName}),
+                'event' => \$event,
+                'side_effects_count' => count(\$sideEffects)
+            ]);
+        }
+    }
+}
+PHP;
     }
 } 

@@ -6,6 +6,10 @@ A powerful Blueprint extension that adds Laravel Auditing package integration to
 
 - **Auditing Configuration**: Automatically configure Laravel Auditing for models
 - **Rewind Functionality**: Add time-travel capabilities to your models
+- **Origin Tracking**: Comprehensive tracking of what caused each change
+- **Request Context**: Track HTTP requests, routes, and controller actions
+- **Side Effects Tracking**: Monitor cascading changes across related models
+- **Causality Chain**: Track the chain of events that led to changes
 - **Migration Generation**: Automatic generation of audits table migration
 - **Custom Audit Models**: Generate custom audit model implementations
 - **Event Tracking**: Track model changes with comprehensive audit trails
@@ -108,6 +112,34 @@ models:
       tags: [blog, content]
 ```
 
+### Auditing with Origin Tracking
+
+Track the origin and context of every change:
+
+```yaml
+models:
+  User:
+    name: string:255
+    email: string:191 unique
+    password: string
+    auditing:
+      events: [created, updated, deleted]
+      exclude: [password, remember_token]
+      origin_tracking:
+        enabled: true
+        track_request: true
+        track_session: true
+        track_route: true
+        track_controller_action: true
+        track_request_data: true
+        track_side_effects: true
+        track_causality_chain: true
+        group_audits: true
+        exclude_request_fields: [password, _token, _method]
+        include_request_fields: [name, email, bio]
+        track_origin_types: [request, console, job, observer]
+```
+
 ### Auditing with Rewind Functionality
 
 Add time-travel capabilities to your models:
@@ -165,6 +197,23 @@ models:
 - `audit_detach`: Whether to audit detach operations
 - `audit_sync`: Whether to audit sync operations
 
+### Origin Tracking Configuration
+
+- `enabled`: Whether origin tracking is enabled
+- `track_request`: Whether to track request ID
+- `track_session`: Whether to track session ID
+- `track_route`: Whether to track route name
+- `track_controller_action`: Whether to track controller action
+- `track_request_data`: Whether to track request data (sanitized)
+- `track_response_data`: Whether to track response data
+- `track_side_effects`: Whether to track side effects in other models
+- `track_causality_chain`: Whether to track the chain of events
+- `group_audits`: Whether to group related audits together
+- `exclude_request_fields`: Array of request fields to exclude
+- `include_request_fields`: Array of request fields to include (overrides exclude)
+- `track_origin_types`: Array of origin types to track
+- `resolvers`: Array of custom resolvers for origin data
+
 ### Rewind Configuration
 
 - `enabled`: Whether rewind functionality is enabled
@@ -206,6 +255,20 @@ class Post extends Model implements Auditable
     protected $auditConsole = false;
     protected $auditEmptyValues = false;
     protected $auditTags = ['blog', 'content'];
+
+    // Origin Tracking Configuration
+    protected $originTrackingEnabled = true;
+    protected $trackRequest = true;
+    protected $trackSession = true;
+    protected $trackRoute = true;
+    protected $trackControllerAction = true;
+    protected $trackRequestData = true;
+    protected $trackSideEffects = true;
+    protected $trackCausalityChain = true;
+    protected $groupAudits = true;
+    protected $excludeRequestFields = ['password', '_token', '_method'];
+    protected $includeRequestFields = ['name', 'email', 'bio'];
+    protected $trackOriginTypes = ['request', 'console', 'job', 'observer'];
 
     // Rewind Configuration
     protected $rewindMethods = ['rewindTo', 'rewindToDate', 'rewindSteps', 'getRewindableAudits'];
@@ -275,6 +338,41 @@ class CustomAudit extends BaseAudit
     // Custom audit model implementation
     // Add your custom methods and properties here
 }
+```
+
+## Using Origin Tracking
+
+The origin tracking functionality provides comprehensive information about what caused each change:
+
+```php
+// Get audits with origin information
+$audits = $user->audits()->with('user')->get();
+
+foreach ($audits as $audit) {
+    echo "Change made by: " . $audit->user->name;
+    echo "Route: " . $audit->getMetadata('route_name');
+    echo "Controller: " . $audit->getMetadata('controller_action');
+    echo "Request ID: " . $audit->getMetadata('request_id');
+    echo "Origin Type: " . $audit->getMetadata('origin_type');
+    echo "Request Data: " . json_encode($audit->getMetadata('request_data'));
+}
+
+// Get side effects for a specific request
+$sideEffects = $user->getSideEffects();
+
+// Track side effects manually
+$user->trackSideEffects([
+    'related_model' => 'Post',
+    'action' => 'created',
+    'reason' => 'User registration'
+]);
+
+// Get audits grouped by request
+$groupedAudits = $user->audits()
+    ->whereNotNull('audit_group_id')
+    ->orderBy('created_at', 'desc')
+    ->get()
+    ->groupBy('audit_group_id');
 ```
 
 ## Using Rewind Functionality

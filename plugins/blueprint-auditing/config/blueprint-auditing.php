@@ -121,6 +121,38 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Default Origin Tracking Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Default configuration values for origin tracking when not specified
+    | in the YAML definition.
+    |
+    */
+    'origin_tracking_defaults' => [
+        'enabled' => false,
+        'track_request' => true,
+        'track_session' => true,
+        'track_route' => true,
+        'track_controller_action' => true,
+        'track_request_data' => false,
+        'track_response_data' => false,
+        'track_side_effects' => false,
+        'track_causality_chain' => false,
+        'group_audits' => true,
+        'exclude_request_fields' => ['_token', '_method', 'password', 'password_confirmation'],
+        'include_request_fields' => [],
+        'track_origin_types' => ['request', 'console', 'job', 'observer'],
+        'resolvers' => [
+            'request_id' => 'BlueprintExtensions\\Auditing\\Resolvers\\RequestIdResolver',
+            'route_name' => 'BlueprintExtensions\\Auditing\\Resolvers\\RouteNameResolver',
+            'controller_action' => 'BlueprintExtensions\\Auditing\\Resolvers\\ControllerActionResolver',
+            'request_data' => 'BlueprintExtensions\\Auditing\\Resolvers\\RequestDataResolver',
+            'origin_type' => 'BlueprintExtensions\\Auditing\\Resolvers\\OriginTypeResolver',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Default Auditing Configuration
     |--------------------------------------------------------------------------
     |

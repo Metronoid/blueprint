@@ -1,0 +1,346 @@
+models:
+  # User model with comprehensive origin tracking
+  User:
+    columns:
+      name: string:255
+      email: string:191 unique
+      password: string
+      email_verified_at: nullable timestamp
+      remember_token: string:100 nullable
+      avatar: string nullable
+      bio: text nullable
+      preferences: json nullable
+      last_login_at: nullable timestamp
+      login_count: integer default:0
+    auditing:
+      events: [created, updated, deleted, restored]
+      exclude: [password, remember_token, email_verified_at]
+      tags: [authentication, user_management]
+      strict: true
+      threshold: 50
+      origin_tracking:
+        enabled: true
+        track_request: true
+        track_session: true
+        track_route: true
+        track_controller_action: true
+        track_request_data: true
+        track_response_data: false
+        track_side_effects: true
+        track_causality_chain: true
+        group_audits: true
+        exclude_request_fields: [password, password_confirmation, _token, _method]
+        include_request_fields: [name, email, bio, preferences]
+        track_origin_types: [request, console, job, observer]
+        resolvers:
+          request_id: BlueprintExtensions\Auditing\Resolvers\RequestIdResolver
+          route_name: BlueprintExtensions\Auditing\Resolvers\RouteNameResolver
+          controller_action: BlueprintExtensions\Auditing\Resolvers\ControllerActionResolver
+      rewind:
+        enabled: true
+        exclude: [password, remember_token, email_verified_at, last_login_at, login_count]
+        max_steps: 10
+        validate: true
+    relationships:
+      hasMany: Post, Comment, Order
+      hasMany: Post:author
+
+  # Post model with detailed origin tracking
+  Post:
+    columns:
+      title: string:255
+      slug: string:255 unique
+      content: longtext
+      excerpt: text nullable
+      featured_image: string nullable
+      status: enum:draft,published,archived default:draft
+      published_at: nullable timestamp
+      view_count: integer default:0
+      read_time: integer nullable
+      seo_title: string:255 nullable
+      seo_description: text nullable
+      author_id: id foreign:users
+      category_id: id foreign:categories
+      last_edited_by: id foreign:users nullable
+      last_edited_at: nullable timestamp
+    auditing:
+      events: [created, updated, deleted]
+      exclude: [view_count, read_time]
+      tags: [content, editorial]
+      threshold: 100
+      strict: true
+      console: false
+      empty_values: false
+      origin_tracking:
+        enabled: true
+        track_request: true
+        track_session: true
+        track_route: true
+        track_controller_action: true
+        track_request_data: true
+        track_response_data: false
+        track_side_effects: true
+        track_causality_chain: true
+        group_audits: true
+        exclude_request_fields: [_token, _method, featured_image]
+        include_request_fields: [title, slug, content, excerpt, status, seo_title, seo_description]
+        track_origin_types: [request, console, observer]
+      rewind:
+        enabled: true
+        include: [title, slug, content, excerpt, status, seo_title, seo_description]
+        max_steps: 25
+        validate: false
+        backup: true
+    relationships:
+      belongsTo: User:author, Category
+      hasMany: Comment
+      belongsToMany: Tag
+
+  # Order model with financial origin tracking
+  Order:
+    columns:
+      order_number: string:50 unique
+      customer_id: id foreign:users
+      total: decimal:10,2
+      status: enum:pending,processing,shipped,delivered,cancelled
+      notes: text nullable
+      internal_notes: text nullable
+      payment_status: enum:pending,paid,failed,refunded
+      shipped_at: nullable timestamp
+      tracking_number: string:100 nullable
+      created_by: id foreign:users
+      processed_by: id foreign:users nullable
+      processed_at: nullable timestamp
+    auditing:
+      events: [created, updated]
+      exclude: [internal_notes]
+      tags: [order, sales, financial]
+      strict: true
+      console: true
+      origin_tracking:
+        enabled: true
+        track_request: true
+        track_session: true
+        track_route: true
+        track_controller_action: true
+        track_request_data: true
+        track_response_data: true
+        track_side_effects: true
+        track_causality_chain: true
+        group_audits: true
+        exclude_request_fields: [_token, _method, internal_notes, payment_details]
+        include_request_fields: [order_number, total, status, notes, payment_status]
+        track_origin_types: [request, console, job, observer]
+        resolvers:
+          request_id: BlueprintExtensions\Auditing\Resolvers\RequestIdResolver
+          route_name: BlueprintExtensions\Auditing\Resolvers\RouteNameResolver
+          controller_action: BlueprintExtensions\Auditing\Resolvers\ControllerActionResolver
+          request_data: BlueprintExtensions\Auditing\Resolvers\RequestDataResolver
+          origin_type: BlueprintExtensions\Auditing\Resolvers\OriginTypeResolver
+      rewind:
+        enabled: true
+        methods: [rewindTo, rewindSteps]
+        exclude: [internal_notes, payment_status, shipped_at, tracking_number]
+        validate: true
+        max_steps: 5
+        events: [rewound, order_reverted]
+        backup: true
+    relationships:
+      belongsTo: User:customer, User:creator, User:processor
+      hasMany: OrderItem
+
+  # Category with basic origin tracking
+  Category:
+    columns:
+      name: string:100
+      slug: string:100 unique
+      description: text nullable
+      color: string:7 default:#3B82F6
+      is_active: boolean default:true
+      sort_order: integer default:0
+      parent_id: id foreign:categories nullable
+    auditing:
+      events: [created, updated, deleted]
+      tags: [content, taxonomy]
+      threshold: 20
+      origin_tracking:
+        enabled: true
+        track_request: true
+        track_route: true
+        track_controller_action: true
+        track_request_data: false
+        track_side_effects: true
+        group_audits: true
+      rewind: true
+    relationships:
+      belongsTo: Category:parent
+      hasMany: Post, Category:children
+
+  # Comment with moderation origin tracking
+  Comment:
+    columns:
+      content: text
+      approved: boolean default:false
+      approved_at: nullable timestamp
+      approved_by: id foreign:users nullable
+      spam_score: decimal:3,2 default:0
+      author_name: string:255 nullable
+      author_email: string:191 nullable
+      author_website: string:255 nullable
+      user_id: id foreign:users nullable
+      post_id: id foreign:posts
+      parent_id: id foreign:comments nullable
+      moderated_by: id foreign:users nullable
+      moderated_at: nullable timestamp
+      moderation_notes: text nullable
+    auditing:
+      events: [created, updated]
+      include: [content, approved, spam_score, author_name, author_email, moderation_notes]
+      tags: [moderation, user_content]
+      threshold: 200
+      strict: false
+      origin_tracking:
+        enabled: true
+        track_request: true
+        track_session: true
+        track_route: true
+        track_controller_action: true
+        track_request_data: true
+        track_side_effects: true
+        track_causality_chain: true
+        group_audits: true
+        exclude_request_fields: [_token, _method, author_email]
+        include_request_fields: [content, approved, spam_score, author_name, moderation_notes]
+        track_origin_types: [request, console, observer]
+      rewind:
+        enabled: true
+        include: [content, approved, moderation_notes]
+        max_steps: 10
+        validate: true
+    relationships:
+      belongsTo: User, Post, Comment:parent, User:moderator
+      hasMany: Comment:replies
+
+controllers:
+  # User management with origin tracking
+  Admin\User:
+    index:
+      query: all
+      render: admin.users.index with:users
+      
+    show:
+      find: user
+      render: admin.users.show with:user
+      
+    create:
+      render: admin.users.create
+      
+    store:
+      validate: user
+      save: user
+      fire: UserCreated with:user
+      redirect: admin.users.show with:user
+      
+    edit:
+      find: user
+      render: admin.users.edit with:user
+      
+    update:
+      find: user
+      validate: user
+      update: user
+      fire: UserUpdated with:user
+      redirect: admin.users.show with:user
+      
+    destroy:
+      find: user
+      delete: user
+      fire: UserDeleted with:user
+      redirect: admin.users.index
+      
+    audit_history:
+      find: user
+      query: user.audits order:created_at,desc limit:50
+      render: admin.users.audit-history with:user,audits
+      
+    origin_analysis:
+      find: user
+      query: user.audits where:origin_type,request group:route_name,controller_action select:route_name,controller_action,count:*
+      render: admin.users.origin-analysis with:user,analysis
+
+  # Post management with comprehensive tracking
+  Admin\Post:
+    audit_history:
+      find: post
+      query: post.audits order:created_at,desc limit:50
+      render: admin.posts.audit-history with:post,audits
+      
+    origin_tracking:
+      find: post
+      query: post.audits where:origin_type,request order:created_at,desc limit:100
+      render: admin.posts.origin-tracking with:post,audits
+      
+    side_effects_analysis:
+      find: post
+      query: post.audits where:side_effects,not_null order:created_at,desc limit:30
+      render: admin.posts.side-effects with:post,audits
+      
+    causality_chain:
+      find: post
+      query: post.audits where:causality_chain,not_null order:created_at,desc limit:20
+      render: admin.posts.causality-chain with:post,audits
+      
+    rewind_preview:
+      find: post
+      find: audit
+      render: admin.posts.rewind-preview with:post,audit
+      
+    perform_rewind:
+      find: post
+      find: audit
+      flash: 'Post reverted to previous version'
+      redirect: admin.posts.show with:post
+
+  # Order management with financial tracking
+  Admin\Order:
+    audit_history:
+      find: order
+      query: order.audits order:created_at,desc limit:30
+      render: admin.orders.audit-history with:order,audits
+      
+    financial_audit:
+      find: order
+      query: order.audits where:origin_type,request order:created_at,desc limit:50
+      render: admin.orders.financial-audit with:order,audits
+      
+    request_analysis:
+      find: order
+      query: order.audits group:request_id select:request_id,count:*,min:created_at,max:created_at
+      render: admin.orders.request-analysis with:order,analysis
+      
+    side_effects_report:
+      find: order
+      query: order.audits where:side_effects,not_null order:created_at,desc limit:25
+      render: admin.orders.side-effects-report with:order,audits
+
+  # Comment moderation with origin tracking
+  Admin\Comment:
+    audit_history:
+      find: comment
+      query: comment.audits order:created_at,desc limit:30
+      render: admin.comments.audit-history with:comment,audits
+      
+    moderation_history:
+      find: comment
+      query: comment.audits where:controller_action,like,%approve% order:created_at,desc limit:20
+      render: admin.comments.moderation-history with:comment,audits
+      
+    bulk_approve:
+      query: comments where:approved,false
+      update: approved, approved_at, approved_by
+      flash: 'Comments approved successfully'
+      redirect: admin.comments
+      
+    origin_analysis:
+      query: comment_audits group:origin_type,controller_action select:origin_type,controller_action,count:*
+      render: admin.comments.origin-analysis with:analysis 

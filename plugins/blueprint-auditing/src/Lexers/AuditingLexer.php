@@ -137,6 +137,11 @@ class AuditingLexer implements Lexer
                 $auditing['audit_sync'] = $config['audit_sync'] === true || $config['audit_sync'] === 'true';
             }
 
+            // Parse origin tracking configuration
+            if (isset($config['origin_tracking'])) {
+                $auditing['origin_tracking'] = $this->parseOriginTrackingConfiguration($config['origin_tracking']);
+            }
+
             // Parse rewind configuration
             if (isset($config['rewind'])) {
                 $auditing['rewind'] = $this->parseRewindConfiguration($config['rewind']);
@@ -231,6 +236,114 @@ class AuditingLexer implements Lexer
             }
 
             return $rewind;
+        }
+
+        // Default case
+        return [
+            'enabled' => false,
+        ];
+    }
+
+    /**
+     * Parse the origin tracking configuration.
+     *
+     * @param mixed $config The origin tracking configuration
+     * @return array The parsed origin tracking configuration
+     */
+    private function parseOriginTrackingConfiguration($config): array
+    {
+        // Handle simple boolean case
+        if (is_bool($config) || $config === 'true' || $config === 'false') {
+            return [
+                'enabled' => $config === true || $config === 'true',
+            ];
+        }
+
+        // Handle string shorthand
+        if (is_string($config) && $config === 'origin') {
+            return [
+                'enabled' => true,
+            ];
+        }
+
+        // Handle detailed configuration
+        if (is_array($config)) {
+            $originTracking = [
+                'enabled' => true,
+            ];
+
+            // Parse request tracking
+            if (isset($config['track_request'])) {
+                $originTracking['track_request'] = $config['track_request'] === true || $config['track_request'] === 'true';
+            }
+
+            // Parse session tracking
+            if (isset($config['track_session'])) {
+                $originTracking['track_session'] = $config['track_session'] === true || $config['track_session'] === 'true';
+            }
+
+            // Parse route tracking
+            if (isset($config['track_route'])) {
+                $originTracking['track_route'] = $config['track_route'] === true || $config['track_route'] === 'true';
+            }
+
+            // Parse controller action tracking
+            if (isset($config['track_controller_action'])) {
+                $originTracking['track_controller_action'] = $config['track_controller_action'] === true || $config['track_controller_action'] === 'true';
+            }
+
+            // Parse request data tracking
+            if (isset($config['track_request_data'])) {
+                $originTracking['track_request_data'] = $config['track_request_data'] === true || $config['track_request_data'] === 'true';
+            }
+
+            // Parse response data tracking
+            if (isset($config['track_response_data'])) {
+                $originTracking['track_response_data'] = $config['track_response_data'] === true || $config['track_response_data'] === 'true';
+            }
+
+            // Parse side effects tracking
+            if (isset($config['track_side_effects'])) {
+                $originTracking['track_side_effects'] = $config['track_side_effects'] === true || $config['track_side_effects'] === 'true';
+            }
+
+            // Parse causality chain tracking
+            if (isset($config['track_causality_chain'])) {
+                $originTracking['track_causality_chain'] = $config['track_causality_chain'] === true || $config['track_causality_chain'] === 'true';
+            }
+
+            // Parse audit grouping
+            if (isset($config['group_audits'])) {
+                $originTracking['group_audits'] = $config['group_audits'] === true || $config['group_audits'] === 'true';
+            }
+
+            // Parse excluded request fields
+            if (isset($config['exclude_request_fields'])) {
+                $originTracking['exclude_request_fields'] = is_array($config['exclude_request_fields']) 
+                    ? $config['exclude_request_fields'] 
+                    : explode(',', str_replace(' ', '', $config['exclude_request_fields']));
+            }
+
+            // Parse included request fields
+            if (isset($config['include_request_fields'])) {
+                $originTracking['include_request_fields'] = is_array($config['include_request_fields']) 
+                    ? $config['include_request_fields'] 
+                    : explode(',', str_replace(' ', '', $config['include_request_fields']));
+            }
+
+            // Parse origin types to track
+            if (isset($config['track_origin_types'])) {
+                $originTracking['track_origin_types'] = is_array($config['track_origin_types']) 
+                    ? $config['track_origin_types'] 
+                    : explode(',', str_replace(' ', '', $config['track_origin_types']));
+            }
+
+            // Parse custom resolvers
+            if (isset($config['resolvers'])) {
+                $originTracking['resolvers'] = $config['resolvers'];
+            }
+
+            return $originTracking;
         }
 
         // Default case
