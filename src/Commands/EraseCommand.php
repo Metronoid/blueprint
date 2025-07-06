@@ -63,7 +63,9 @@ class EraseCommand extends Command
         unset($generated['created']);
         unset($generated['updated']);
 
-        $this->filesystem->put('.blueprint', $blueprint->dump($generated));
+        // Always delete the .blueprint file after erasing
+        $this->filesystem->delete('.blueprint');
+        $this->info('Blueprint file deleted.');
 
         return $this->call('blueprint:trace');
     }

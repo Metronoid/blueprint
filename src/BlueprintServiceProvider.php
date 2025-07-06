@@ -84,6 +84,19 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             $blueprint->registerLexer(new \Blueprint\Lexers\SeederLexer);
             $blueprint->registerLexer(new \Blueprint\Lexers\ControllerLexer(new \Blueprint\Lexers\StatementLexer));
 
+            // Register plugin lexers if plugin system is available
+            if ($app->bound(PluginManager::class)) {
+                $pluginManager = $app[PluginManager::class];
+                foreach ($pluginManager->getPlugins() as $plugin) {
+                    if (method_exists($plugin, 'getLexers')) {
+                        $lexers = $plugin->getLexers();
+                        foreach ($lexers as $lexer) {
+                            $blueprint->registerLexer($lexer);
+                        }
+                    }
+                }
+            }
+
             // Register core generators with the registry
             foreach (config('blueprint.generators') as $generator) {
                 $generatorInstance = new $generator($app['files']);

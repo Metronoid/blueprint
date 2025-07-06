@@ -180,7 +180,7 @@ class ConstraintsGenerator implements PluginGenerator
         if (!empty($constraints)) {
             $migrationContent = $this->generateConstraintsMigration($tableName, $constraints);
             $this->filesystem->put($migrationPath, $migrationContent);
-            $output[$migrationPath] = 'created';
+            $output['created'][] = $migrationPath;
         }
 
         return $output;
@@ -209,7 +209,7 @@ class ConstraintsGenerator implements PluginGenerator
             $updatedContent = $this->addValidationRulesToRequest($requestFile, $constraintsConfig);
             if ($updatedContent) {
                 $this->filesystem->put($requestFile, $updatedContent);
-                $output[$requestFile] = 'updated';
+                $output['updated'][] = $requestFile;
             }
         }
 
@@ -217,7 +217,7 @@ class ConstraintsGenerator implements PluginGenerator
         if (empty($requestFiles)) {
             $rulesFile = $this->createValidationRulesFile($modelName, $constraintsConfig);
             if ($rulesFile) {
-                $output[$rulesFile['path']] = 'created';
+                $output['created'][] = $rulesFile['path'];
             }
         }
 
@@ -248,7 +248,7 @@ class ConstraintsGenerator implements PluginGenerator
 
             if ($modifiedContent !== $modelContent) {
                 $this->filesystem->put($modelPath, $modifiedContent);
-                $output[$modelPath] = 'updated';
+                $output['updated'][] = $modelPath;
             }
         }
 
@@ -304,7 +304,7 @@ class ConstraintsGenerator implements PluginGenerator
                 'in' => 'CHECK ({column} IN ({values}))',
                 'not_in' => 'CHECK ({column} NOT IN ({values}))',
                 'regex' => 'CHECK ({column} REGEXP \'{pattern}\')',
-                'length' => 'CHECK (LENGTH({column}) {operator} {value})',
+                'length' => 'CHECK (LENGTH({column}) >= {value})',
             ];
         }
         
@@ -595,26 +595,53 @@ PHP;
      */
     protected function insertValidationRules(string $content, array $validationRules): string
     {
-        $rulesComment = "        // Constraint validation rules added by Blueprint Constraints Extension\n";
+        // Try to find existing rules method and update it
+        if (preg_match('/(public function rules\(\):\s*array\s*\{[^}]*return\s*\[)([^}]*)(\];[^}]*\})/s', $content, $matches)) {
+            $beforeRules = $matches[1];
+            $existingRules = $matches[2];
+            $afterRules = $matches[3];
+            
+            // Parse existing rules to avoid duplicates
+            $existingRulesArray = [];
+            if (preg_match_all("/'([^']+)'\s*=>\s*\[([^\]]+)\]/", $existingRules, $ruleMatches, PREG_SET_ORDER)) {
+                foreach ($ruleMatches as $ruleMatch) {
+                    $column = $ruleMatch[1];
+                    $rules = $ruleMatch[2];
+                    $existingRulesArray[$column] = $rules;
+                }
+            }
+            
+            // Merge with new validation rules
+            foreach ($validationRules as $column => $rules) {
+                $rulesString = "'" . implode("', '", $rules) . "'";
+                if (isset($existingRulesArray[$column])) {
+                    // Merge with existing rules
+                    $existingRulesArray[$column] = $existingRulesArray[$column] . ", '" . implode("', '", $rules) . "'";
+                } else {
+                    // Add new rules
+                    $existingRulesArray[$column] = $rulesString;
+                }
+            }
+            
+            // Rebuild the rules array
+            $newRulesArray = "";
+            foreach ($existingRulesArray as $column => $rules) {
+                $newRulesArray .= "            '{$column}' => [{$rules}],\n";
+            }
+            
+            return $beforeRules . $newRulesArray . $afterRules;
+        }
+        
+        // If no rules method exists, create one
         $rulesCode = "";
-
         foreach ($validationRules as $column => $rules) {
-            $rulesString = "'" . implode('|', $rules) . "'";
-            $rulesCode .= "            '{$column}' => {$rulesString},\n";
+            $rulesString = "'" . implode("', '", $rules) . "'";
+            $rulesCode .= "            '{$column}' => [{$rulesString}],\n";
         }
-
-        // Try to find existing rules method and add to it
-        if (preg_match('/public function rules\(\).*?\{.*?return\s*\[(.*?)\];.*?\}/s', $content, $matches)) {
-            $existingRulesArray = $matches[1];
-            $newRules = $existingRulesArray . "\n\n" . $rulesComment . $rulesCode;
-            $content = str_replace($matches[1], $newRules, $content);
-        } else {
-            // Add rules method if it doesn't exist
-            $rulesMethod = "\n    /**\n     * Get the validation rules that apply to the request.\n     */\n    public function rules(): array\n    {\n        return [\n{$rulesComment}{$rulesCode}        ];\n    }\n";
-            $content = preg_replace('/(\}\s*)$/', $rulesMethod . '$1', $content);
-        }
-
-        return $content;
+        
+        $rulesMethod = "\n    /**\n     * Get the validation rules that apply to the request.\n     */\n    public function rules(): array\n    {\n        return [\n{$rulesCode}        ];\n    }\n";
+        
+        return preg_replace('/(\}\s*)$/', $rulesMethod . '$1', $content);
     }
 
     /**

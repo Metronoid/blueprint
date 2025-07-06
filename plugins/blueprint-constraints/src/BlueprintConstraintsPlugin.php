@@ -58,22 +58,6 @@ class BlueprintConstraintsPlugin extends AbstractPlugin
                 'blueprint-constraints',
                 array_merge($defaultConfig, $this->getConfig())
             );
-        } catch (\Exception $e) {
-            // Silently fail during registration to avoid breaking the application
-        }
-    }
-
-    public function boot(): void
-    {
-        try {
-            $app = Container::getInstance();
-            
-            // Register the lexer with Blueprint directly
-            if ($app->bound(\Blueprint\Blueprint::class)) {
-                $blueprint = $app->make(\Blueprint\Blueprint::class);
-                $lexer = new ConstraintsLexer();
-                $blueprint->registerLexer($lexer);
-            }
             
             // Register the generator with the plugin system
             if ($app->bound(GeneratorRegistry::class)) {
@@ -82,12 +66,28 @@ class BlueprintConstraintsPlugin extends AbstractPlugin
                 $generatorRegistry->registerPluginGenerator($generator);
             }
         } catch (\Exception $e) {
-            // Silently fail during boot to avoid breaking the application
+            // Silently fail during registration to avoid breaking the application
         }
+    }
+
+    public function boot(): void
+    {
+        // Lexers are now registered through the plugin system
+        // This method can be used for other boot-time operations if needed
     }
 
     public function isCompatible(string $blueprintVersion): bool
     {
         return version_compare($blueprintVersion, '2.0.0', '>=');
+    }
+
+    /**
+     * Get the lexers provided by this plugin.
+     */
+    public function getLexers(): array
+    {
+        return [
+            new ConstraintsLexer()
+        ];
     }
 } 

@@ -48,4 +48,9 @@ interface Plugin
      * Check if the plugin is compatible with the current Blueprint version.
      */
     public function isCompatible(string $blueprintVersion): bool;
+
+    /**
+     * Get the lexers provided by this plugin.
+     */
+    public function getLexers(): array;
 } 

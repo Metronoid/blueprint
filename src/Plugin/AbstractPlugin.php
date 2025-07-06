@@ -61,6 +61,16 @@ abstract class AbstractPlugin implements Plugin
     }
 
     /**
+     * Get the lexers provided by this plugin.
+     */
+    public function getLexers(): array
+    {
+        // Default implementation - no lexers
+        // Override this method to provide lexers
+        return [];
+    }
+
+    /**
      * Get the plugin configuration.
      */
     protected function getConfig(): array
