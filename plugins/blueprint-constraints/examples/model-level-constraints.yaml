@@ -1,11 +1,12 @@
 models:
   Employee:
-    name: string:255
-    email: string:191 unique
-    salary: decimal:10,2
-    department: string:100
-    hire_date: date
-    performance_rating: integer
+    columns:
+      name: string:255
+      email: string:191 unique
+      salary: decimal:10,2
+      department: string:100
+      hire_date: date
+      performance_rating: integer
     constraints:
       salary: 
         - min:30000
@@ -21,9 +22,10 @@ models:
       belongsTo: Department
 
   Department:
-    name: string:100
-    budget: decimal:12,2
-    manager_id: id foreign:employees nullable
+    columns:
+      name: string:100
+      budget: decimal:12,2
+      manager_id: id foreign:employees nullable
     constraints:
       budget:
         - min:10000
@@ -36,12 +38,13 @@ models:
       hasMany: Employee
 
   Project:
-    name: string:200
-    budget: decimal:10,2
-    start_date: date
-    end_date: date
-    priority: integer
-    status: enum:planning,active,completed,cancelled
+    columns:
+      name: string:200
+      budget: decimal:10,2
+      start_date: date
+      end_date: date
+      priority: integer
+      status: enum:planning,active,completed,cancelled
     constraints:
       budget:
         - min:1000

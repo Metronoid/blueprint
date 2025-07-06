@@ -1,51 +1,56 @@
 models:
   Product:
-    name: string:255
-    price: decimal:8,2 min:0.01 max:10000
-    quantity: integer min:0 max:1000
-    rating: integer between:1,5
-    status: enum:active,inactive,discontinued in:active,inactive,discontinued
-    sku: string:50 regex:^[A-Z]{3}-\d{4}$
-    description: text length:10
-    category_id: id foreign:categories
+    columns:
+      name: string:255
+      price: decimal:8,2 min:0.01 max:10000
+      quantity: integer min:0 max:1000
+      rating: integer between:1,5
+      status: enum:active,inactive,discontinued in:active,inactive,discontinued
+      sku: string:50 regex:^[A-Z]{3}-\d{4}$
+      description: text length:10
+      category_id: id foreign:categories
     relationships:
       belongsTo: Category
 
   Category:
-    name: string:100
-    slug: string:100 alpha_num
-    is_active: boolean
-    sort_order: integer min:0
+    columns:
+      name: string:100
+      slug: string:100 alpha_num
+      is_active: boolean
+      sort_order: integer min:0
 
   User:
-    name: string:255
-    email: string:191 unique email
-    age: integer min:13 max:120
-    phone: string:20 regex:^\+?[1-9]\d{1,14}$
-    website: string:255 url
-    ip_address: string:45 ip
-    preferences: json
-    birth_date: date before:today
+    columns:
+      name: string:255
+      email: string:191 unique email
+      age: integer min:13 max:120
+      phone: string:20 regex:^\+?[1-9]\d{1,14}$
+      website: string:255 url
+      ip_address: string:45 ip
+      preferences: json
+      birth_date: date before:today
     relationships:
       hasMany: Order
 
   Order:
-    order_number: string:20 unique
-    total: decimal:10,2 min:0
-    discount: decimal:5,2 between:0,100
-    status: enum:pending,processing,shipped,delivered,cancelled
-    user_id: id foreign:users
-    created_at: timestamp after:2020-01-01
+    columns:
+      order_number: string:20 unique
+      total: decimal:10,2 min:0
+      discount: decimal:5,2 between:0,100
+      status: enum:pending,processing,shipped,delivered,cancelled
+      user_id: id foreign:users
+      created_at: timestamp after:2020-01-01
     relationships:
       belongsTo: User
       hasMany: OrderItem
 
   OrderItem:
-    quantity: integer min:1 max:999
-    price: decimal:8,2 min:0
-    discount_percent: decimal:5,2 between:0,100
-    product_id: id foreign:products
-    order_id: id foreign:orders
+    columns:
+      quantity: integer min:1 max:999
+      price: decimal:8,2 min:0
+      discount_percent: decimal:5,2 between:0,100
+      product_id: id foreign:products
+      order_id: id foreign:orders
     relationships:
       belongsTo: Product, Order
 
