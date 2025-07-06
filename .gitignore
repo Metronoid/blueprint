@@ -28,3 +28,6 @@ Thumbs.db
 
 # Cache files
 *.cache
+
+# Dashboard views (if you want to ignore them)
+resources/views/dashboard/

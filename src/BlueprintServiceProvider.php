@@ -45,6 +45,17 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
 
         // Boot plugin system
         $this->bootPluginSystem();
+
+        // Register dashboard views
+        $this->loadViewsFrom(dirname(__DIR__) . '/resources/views', 'blueprint');
+        $this->publishes([
+            dirname(__DIR__) . '/resources/views' => resource_path('views/vendor/blueprint'),
+        ], 'blueprint-views');
+
+        // Register dashboard routes
+        if ($this->app->runningInConsole() === false) {
+            $this->loadRoutesFrom(dirname(__DIR__) . '/routes/web.php');
+        }
     }
 
     /**
@@ -99,7 +110,12 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
 
             // Register core generators with the registry
             foreach (config('blueprint.generators') as $generator) {
-                $generatorInstance = new $generator($app['files']);
+                // Special handling for MigrationGenerator to inject DatabaseSchemaService
+                if ($generator === \Blueprint\Generators\MigrationGenerator::class) {
+                    $generatorInstance = new $generator($app['files'], app(\Blueprint\Services\DatabaseSchemaService::class));
+                } else {
+                    $generatorInstance = new $generator($app['files']);
+                }
                 $blueprint->registerGenerator($generatorInstance);
                 // Register with registry using generator class name as type
                 $type = class_basename($generator);
@@ -141,6 +157,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             PluginManager::class,
             GeneratorRegistry::class,
             ConfigValidator::class,
+            \Blueprint\Services\DatabaseSchemaService::class,
         ];
     }
 

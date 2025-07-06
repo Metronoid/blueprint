@@ -172,6 +172,7 @@ return [
         'view' => \Blueprint\Generators\Statements\ViewGenerator::class,
         'inertia_page' => \Blueprint\Generators\Statements\InertiaPageGenerator::class,
         'policy' => \Blueprint\Generators\PolicyGenerator::class,
+        'layout' => \Blueprint\Generators\LayoutGenerator::class,
     ],
 
     /*

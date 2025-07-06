@@ -7,16 +7,17 @@ use Blueprint\Contracts\Model;
 use Blueprint\Exceptions\GenerationException;
 use Blueprint\Tree;
 use Illuminate\Filesystem\Filesystem;
+use Blueprint\Concerns\ManagesOutput;
 
 class AbstractClassGenerator
 {
+    use ManagesOutput;
+
     public const INDENT = '        ';
 
     protected Filesystem $filesystem;
 
     protected Tree $tree;
-
-    protected array $output = [];
 
     public function __construct(Filesystem $filesystem)
     {
@@ -49,7 +50,7 @@ class AbstractClassGenerator
                 throw GenerationException::fileWriteError($path, 'Failed to write file content');
             }
 
-            $this->output['created'][] = $path;
+            $this->addCreated($path);
         } catch (GenerationException $e) {
             throw $e;
         } catch (\Exception $e) {
@@ -79,9 +80,9 @@ class AbstractClassGenerator
             }
 
             if ($this->filesystem->exists($path)) {
-                $this->output['updated'][] = $path;
+                $this->addUpdated($path);
             } else {
-                $this->output['created'][] = $path;
+                $this->addCreated($path);
             }
         } catch (GenerationException $e) {
             throw $e;

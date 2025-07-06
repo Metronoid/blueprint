@@ -6,11 +6,16 @@ use Blueprint\Contracts\PluginGenerator;
 use Blueprint\Contracts\Plugin;
 use Blueprint\Models\Model;
 use Blueprint\Tree;
+use Blueprint\Concerns\ManagesOutput;
+use Blueprint\Services\DatabaseSchemaService;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Str;
 
 class ConstraintsGenerator implements PluginGenerator
 {
+    use ManagesOutput;
+
     /** @var Filesystem */
     protected $filesystem;
 
@@ -19,6 +24,9 @@ class ConstraintsGenerator implements PluginGenerator
 
     /** @var array */
     protected $config = [];
+
+    /** @var DatabaseSchemaService */
+    protected $schemaService;
 
     public function __construct(Filesystem $filesystem, ?Plugin $plugin = null)
     {
@@ -47,7 +55,7 @@ class ConstraintsGenerator implements PluginGenerator
      */
     public function getPriority(): int
     {
-        return 100;
+        return 10;
     }
 
     /**
@@ -101,33 +109,33 @@ class ConstraintsGenerator implements PluginGenerator
      */
     public function output(Tree $tree): array
     {
-        $output = [];
+        $this->resetOutput();
 
         $treeArray = $tree->toArray();
         $constraintsData = $treeArray['constraints'] ?? [];
 
         if (empty($constraintsData)) {
-            return $output;
+            return $this->getOutput();
         }
 
         foreach ($constraintsData as $modelName => $constraintsConfig) {
             // Generate database constraints in migrations
             if ($this->getConfigValue('generate_database_constraints', true)) {
-                $output = array_merge($output, $this->generateDatabaseConstraints($modelName, $constraintsConfig));
+                $this->mergeOutput($this->generateDatabaseConstraints($modelName, $constraintsConfig));
             }
 
             // Generate validation rules in Form Requests
             if ($this->getConfigValue('generate_validation_rules', true)) {
-                $output = array_merge($output, $this->generateValidationRules($modelName, $constraintsConfig));
+                $this->mergeOutput($this->generateValidationRules($modelName, $constraintsConfig));
             }
 
             // Generate model mutators (optional)
             if ($this->getConfigValue('generate_model_mutators', false)) {
-                $output = array_merge($output, $this->generateModelMutators($modelName, $constraintsConfig));
+                $this->mergeOutput($this->generateModelMutators($modelName, $constraintsConfig));
             }
         }
 
-        return $output;
+        return $this->getOutput();
     }
 
     /**
@@ -164,7 +172,11 @@ class ConstraintsGenerator implements PluginGenerator
      */
     protected function generateDatabaseConstraints(string $modelName, array $constraintsConfig): array
     {
-        $output = [];
+        $output = [
+            'created' => [],
+            'updated' => [],
+            'skipped' => []
+        ];
         
         // Check if database constraints generation is enabled
         if (!$this->getConfigValue('generate_database_constraints', true)) {
@@ -172,7 +184,11 @@ class ConstraintsGenerator implements PluginGenerator
         }
         
         $tableName = Str::snake(Str::plural($modelName));
-        $migrationName = date('Y_m_d_His') . '_add_constraints_to_' . $tableName . '_table.php';
+        
+        // Generate constraint migration with a timestamp that ensures it runs after table creation
+        // Use current time + 60 seconds to ensure it runs after all table creation migrations
+        $timestamp = now()->addSeconds(60)->format('Y_m_d_His');
+        $migrationName = $timestamp . '_add_constraints_to_' . $tableName . '_table.php';
         $migrationPath = 'database/migrations/' . $migrationName;
 
         $constraints = $this->buildDatabaseConstraints($tableName, $constraintsConfig);
@@ -195,7 +211,11 @@ class ConstraintsGenerator implements PluginGenerator
      */
     protected function generateValidationRules(string $modelName, array $constraintsConfig): array
     {
-        $output = [];
+        $output = [
+            'created' => [],
+            'updated' => [],
+            'skipped' => []
+        ];
         
         // Check if validation rules generation is enabled
         if (!$this->getConfigValue('generate_validation_rules', true)) {
@@ -231,9 +251,13 @@ class ConstraintsGenerator implements PluginGenerator
      * @param array $constraintsConfig The constraints configuration
      * @return array Generated files
      */
-    protected function generateModelMutators(string $modelName, array $constraintsConfig): array
+        protected function generateModelMutators(string $modelName, array $constraintsConfig): array
     {
-        $output = [];
+        $output = [
+            'created' => [],
+            'updated' => [],
+            'skipped' => []
+        ];
         
         // Check if model mutators generation is enabled
         if (!$this->getConfigValue('generate_model_mutators', false)) {
@@ -268,7 +292,17 @@ class ConstraintsGenerator implements PluginGenerator
         $columns = $constraintsConfig['columns'] ?? [];
 
         foreach ($columns as $column => $columnConstraints) {
+            // Ensure columnConstraints is an array
+            if (!is_array($columnConstraints)) {
+                continue;
+            }
+            
             foreach ($columnConstraints as $constraint) {
+                // Validate constraint structure
+                if (!is_array($constraint) || !isset($constraint['type'])) {
+                    continue;
+                }
+                
                 $constraintSql = $this->buildConstraintSql($column, $constraint);
                 if ($constraintSql) {
                     $constraints[] = [
@@ -293,6 +327,11 @@ class ConstraintsGenerator implements PluginGenerator
      */
     protected function buildConstraintSql(string $column, array $constraint): ?string
     {
+        // Validate constraint structure
+        if (!isset($constraint['type'])) {
+            return null;
+        }
+        
         $constraintMappings = $this->getConfigValue('database_constraints', []);
         
         // Fallback mappings if config is not available
@@ -303,7 +342,7 @@ class ConstraintsGenerator implements PluginGenerator
                 'between' => 'CHECK ({column} BETWEEN {min} AND {max})',
                 'in' => 'CHECK ({column} IN ({values}))',
                 'not_in' => 'CHECK ({column} NOT IN ({values}))',
-                'regex' => 'CHECK ({column} REGEXP \'{pattern}\')',
+                'regex' => 'CHECK ({column} REGEXP "{pattern}")',
                 'length' => 'CHECK (LENGTH({column}) >= {value})',
             ];
         }
@@ -322,16 +361,25 @@ class ConstraintsGenerator implements PluginGenerator
             case 'max':
             case 'length':
             case 'digits':
+                if (!isset($constraint['value'])) {
+                    return null;
+                }
                 $replacements['value'] = $constraint['value'];
                 break;
 
             case 'between':
+                if (!isset($constraint['min']) || !isset($constraint['max'])) {
+                    return null;
+                }
                 $replacements['min'] = $constraint['min'];
                 $replacements['max'] = $constraint['max'];
                 break;
 
             case 'in':
             case 'not_in':
+                if (!isset($constraint['values']) || !is_array($constraint['values'])) {
+                    return null;
+                }
                 $values = array_map(function ($value) {
                     return "'" . addslashes($value) . "'";
                 }, $constraint['values']);
@@ -339,15 +387,30 @@ class ConstraintsGenerator implements PluginGenerator
                 break;
 
             case 'regex':
-                $replacements['pattern'] = addslashes($constraint['pattern']);
+                if (!isset($constraint['pattern'])) {
+                    return null;
+                }
+                // For regex patterns, we need to handle escaping carefully
+                $pattern = $constraint['pattern'];
+                // Since we're using double quotes in the template, we need to escape double quotes in the pattern
+                $pattern = str_replace('"', '\\"', $pattern);
+                $replacements['pattern'] = $pattern;
                 break;
         }
 
-        return str_replace(
+        $sql = str_replace(
             array_map(fn($key) => '{' . $key . '}', array_keys($replacements)),
             array_values($replacements),
             $template
         );
+
+        // Handle special case for length constraints that might have operator placeholders
+        if ($type === 'length' && strpos($sql, '{operator}') !== false) {
+            $operator = $constraint['operator'] ?? '>=';
+            $sql = str_replace('{operator}', $operator, $sql);
+        }
+
+        return $sql;
     }
 
     /**
@@ -376,10 +439,27 @@ class ConstraintsGenerator implements PluginGenerator
         $upStatements = [];
         $downStatements = [];
 
+        // Add a check to ensure the table exists before adding constraints
+        $upStatements[] = "        if (!Schema::hasTable('{$tableName}')) {";
+        $upStatements[] = "            throw new \\Exception('Table {$tableName} does not exist. Please run the table creation migration first.');";
+        $upStatements[] = "        }";
+        $upStatements[] = "";
+
+        $upStatements[] = "        if (\\DB::getDriverName() === 'sqlite') {";
+        $upStatements[] = "            return;";
+        $downStatements[] = "        if (\\DB::getDriverName() === 'sqlite') { return; }";
+
+        $upStatements[] = "        } else {";
+        $upStatements[] = "            // Other databases: Using named constraints";
+        
+        // Generate named constraints for other databases
         foreach ($constraints as $constraint) {
-            $upStatements[] = "        DB::statement('ALTER TABLE {$tableName} ADD CONSTRAINT {$constraint['name']} {$constraint['sql']}');";
-            $downStatements[] = "        DB::statement('ALTER TABLE {$tableName} DROP CONSTRAINT {$constraint['name']}');";
+            $escapedSql = str_replace('"', '\\"', $constraint['sql']);
+            $upStatements[] = "            DB::statement(\"ALTER TABLE {$tableName} ADD CONSTRAINT {$constraint['name']} {$escapedSql}\");";
+            $downStatements[] = "            DB::statement(\"ALTER TABLE {$tableName} DROP CONSTRAINT {$constraint['name']}\");";
         }
+        
+        $upStatements[] = "        }";
 
         $upBody = implode("\n", $upStatements);
         $downBody = implode("\n", $downStatements);
@@ -720,5 +800,13 @@ PHP;
         // This is a placeholder implementation
         // In a real implementation, you would add model mutators for runtime validation
         return $modelContent;
+    }
+
+    protected function getSchemaService(): DatabaseSchemaService
+    {
+        if ($this->schemaService === null) {
+            $this->schemaService = App::make(DatabaseSchemaService::class);
+        }
+        return $this->schemaService;
     }
 } 

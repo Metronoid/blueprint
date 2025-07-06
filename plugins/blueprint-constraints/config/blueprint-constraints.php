@@ -62,8 +62,8 @@ return [
         'between' => 'CHECK ({column} BETWEEN {min} AND {max})',
         'in' => 'CHECK ({column} IN ({values}))',
         'not_in' => 'CHECK ({column} NOT IN ({values}))',
-        'regex' => 'CHECK ({column} REGEXP \'{pattern}\')',
-        'length' => 'CHECK (LENGTH({column}) {operator} {value})',
+        'regex' => 'CHECK ({column} REGEXP "{pattern}")',
+        'length' => 'CHECK (LENGTH({column}) >= {value})',
     ],
 
     /*

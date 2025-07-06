@@ -6,8 +6,11 @@ use Blueprint\Contracts\Generator;
 use Blueprint\Models\Model;
 use Blueprint\Tree;
 use Carbon\Carbon;
+use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Str;
 use Symfony\Component\Finder\SplFileInfo;
+use Blueprint\Services\DatabaseSchemaService;
 
 class MigrationGenerator extends AbstractClassGenerator implements Generator
 {
@@ -57,6 +60,21 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
     protected array $types = ['migrations'];
 
     private bool $hasForeignKeyConstraints = false;
+    
+    private ?DatabaseSchemaService $schemaService = null;
+
+    public function __construct(Filesystem $filesystem)
+    {
+        parent::__construct($filesystem);
+    }
+
+    protected function getSchemaService(): DatabaseSchemaService
+    {
+        if ($this->schemaService === null) {
+            $this->schemaService = App::make(DatabaseSchemaService::class);
+        }
+        return $this->schemaService;
+    }
 
     public function output(Tree $tree, $overwrite = false): array
     {
@@ -88,8 +106,19 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
 
     protected function populateStub(string $stub, Model $model): string
     {
-        $stub = str_replace('{{ table }}', $model->tableName(), $stub);
-        $stub = str_replace('{{ definition }}', $this->buildDefinition($model), $stub);
+        $tableName = $model->tableName();
+        $tableExists = $this->getSchemaService()->tableExists($tableName);
+        
+        // Use update stub if table exists, otherwise use create stub
+        if ($tableExists) {
+            $stub = $this->filesystem->stub('migration-update.stub');
+            $stub = str_replace('{{ table }}', $tableName, $stub);
+            $stub = str_replace('{{ definition }}', $this->buildUpdateDefinition($model), $stub);
+            $stub = str_replace('{{ rollback }}', $this->buildRollbackDefinition($model), $stub);
+        } else {
+            $stub = str_replace('{{ table }}', $tableName, $stub);
+            $stub = str_replace('{{ definition }}', $this->buildDefinition($model), $stub);
+        }
 
         if ($this->hasForeignKeyConstraints) {
             $stub = $this->disableForeignKeyConstraints($stub);
@@ -114,7 +143,6 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
 
         // Get all columns and preserve their order as defined in the YAML draft
         $columns = $model->columns();
-        // If associative, preserve order as inserted (PHP >=7.0)
         $columns = array_values($columns);
         // Move primary key column to the top if it exists
         $primaryKeyIndex = null;
@@ -128,6 +156,18 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
             $primaryKey = $columns[$primaryKeyIndex];
             array_splice($columns, $primaryKeyIndex, 1);
             array_unshift($columns, $primaryKey);
+        }
+
+        // Track if created_at or updated_at is defined explicitly
+        $hasCreatedAt = false;
+        $hasUpdatedAt = false;
+        foreach ($columns as $column) {
+            if ($column->name() === 'created_at') {
+                $hasCreatedAt = true;
+            }
+            if ($column->name() === 'updated_at') {
+                $hasUpdatedAt = true;
+            }
         }
 
         /**
@@ -198,45 +238,41 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
                     $columnAttributes,
                     $column->modifiers()
                 );
+            }
 
-                if ($this->isIdColumnType($column->dataType())) {
-                    $column_definition = $foreign;
-                    $foreign = '';
+            foreach (
+                $modifiers as $modifier
+            ) {
+                if ($modifier === 'nullable') {
+                    $column_definition .= '->nullable()';
+                } elseif ($modifier === 'unsigned' && !in_array($dataType, self::UNSIGNABLE_TYPES)) {
+                    $column_definition .= '->unsigned()';
+                } elseif ($modifier === 'default') {
+                    $column_definition .= '->default(' . $this->getDefaultValue($column) . ')';
+                } elseif ($modifier === 'index') {
+                    $column_definition .= '->index()';
+                } elseif ($modifier === 'unique') {
+                    $column_definition .= '->unique()';
+                } elseif ($modifier === 'primary') {
+                    $column_definition .= '->primary()';
+                } elseif ($modifier === 'foreign') {
+                    $column_definition .= $foreign;
+                } elseif (is_string($modifier) && Str::startsWith($modifier, 'foreign:')) {
+                    $column_definition .= $this->buildForeignKey(
+                        $column->name(),
+                        Str::after($modifier, 'foreign:'),
+                        $column->dataType(),
+                        $columnAttributes,
+                        $column->modifiers()
+                    );
+                } elseif (is_string($modifier) && Str::startsWith($modifier, 'onDelete:')) {
+                    $column_definition .= $this->buildOnDeleteClause(Str::after($modifier, 'onDelete:'));
+                } elseif (is_string($modifier) && Str::startsWith($modifier, 'onUpdate:')) {
+                    $column_definition .= $this->buildOnUpdateClause(Str::after($modifier, 'onUpdate:'));
                 }
-
-                // TODO: unset the proper modifier
-                $modifiers = collect($modifiers)->reject(
-                    fn ($modifier) => (is_array($modifier) && key($modifier) === 'foreign')
-                        || (is_array($modifier) && key($modifier) === 'onDelete')
-                        || (is_array($modifier) && key($modifier) === 'onUpdate')
-                        || $modifier === 'foreign'
-                        || ($modifier === 'nullable' && $this->isIdColumnType($column->dataType()))
-                );
             }
 
-            foreach ($modifiers as $modifier) {
-                if (is_array($modifier)) {
-                    $modifierKey = key($modifier);
-                    $modifierValue = addslashes(current($modifier));
-                    if ($modifierKey === 'default' && ($modifierValue === 'null' || $dataType === 'boolean' || $this->isNumericDefault($dataType, $modifierValue))) {
-                        $column_definition .= sprintf('->%s(%s)', $modifierKey, $modifierValue);
-                    } else {
-                        $column_definition .= sprintf("->%s('%s')", $modifierKey, $modifierValue);
-                    }
-                } elseif ($modifier === 'unsigned' && Str::startsWith($dataType, 'unsigned')) {
-                    continue;
-                } elseif ($modifier === 'nullable' && Str::startsWith($dataType, 'nullable')) {
-                    continue;
-                } else {
-                    $column_definition .= '->' . $modifier . '()';
-                }
-            }
-
-            $column_definition .= ';' . PHP_EOL;
-            if (!empty($foreign)) {
-                $column_definition .= $foreign . ';' . PHP_EOL;
-            }
-            $definition .= $column_definition;
+            $definition .= $column_definition . ';' . PHP_EOL;
         }
 
         $relationships = $model->relationships();
@@ -257,7 +293,7 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
             }
             $definition .= $index_definition;
         }
-        if ($model->usesTimestamps()) {
+        if ($model->usesTimestamps() && !($hasCreatedAt || $hasUpdatedAt)) {
             $definition .= self::INDENT . '$table->' . $model->timestampsDataType() . '();' . PHP_EOL;
         }
 
@@ -453,6 +489,175 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
         return $definition;
     }
 
+    protected function buildUpdateDefinition(Model $model): string
+    {
+        $definition = '';
+        $existingColumns = $this->getSchemaService()->getTableColumns($model->tableName());
+        $existingColumnDetails = $this->getSchemaService()->getTableColumnDetails($model->tableName());
+
+        // Get all columns and preserve their order as defined in the YAML draft
+        $columns = $model->columns();
+        $columns = array_values($columns);
+
+        // Track if created_at or updated_at is defined explicitly in YAML
+        $hasCreatedAt = false;
+        $hasUpdatedAt = false;
+        foreach ($columns as $column) {
+            if ($column->name() === 'created_at') {
+                $hasCreatedAt = true;
+            }
+            if ($column->name() === 'updated_at') {
+                $hasUpdatedAt = true;
+            }
+        }
+        // Also check if they exist in the DB
+        $dbHasCreatedAt = in_array('created_at', $existingColumns);
+        $dbHasUpdatedAt = in_array('updated_at', $existingColumns);
+
+        /**
+         * @var \Blueprint\Models\Column $column
+         */
+        foreach ($columns as $column) {
+            $columnName = $column->name();
+            
+            // Skip if column already exists and has the same definition
+            if (in_array($columnName, $existingColumns)) {
+                // TODO: Compare column definitions to see if changes are needed
+                continue;
+            }
+
+            $dataType = $column->dataType();
+
+            if ($column->name() === 'id' && $dataType === 'id') {
+                $dataType = 'bigIncrements';
+            } elseif ($dataType === 'id') {
+                $dataType = 'foreignId';
+            }
+
+            if (in_array($dataType, self::UNSIGNABLE_TYPES) && in_array('unsigned', $column->modifiers())) {
+                $dataType = 'unsigned' . ucfirst($dataType);
+            }
+
+            if (in_array($dataType, self::NULLABLE_TYPES) && $column->isNullable()) {
+                $dataType = 'nullable' . ucfirst($dataType);
+            }
+
+            $column_definition = self::INDENT;
+            if ($dataType === 'bigIncrements') {
+                $column_definition .= '$table->id(';
+            } elseif ($dataType === 'rememberToken') {
+                $column_definition .= '$table->rememberToken(';
+            } else {
+                $column_definition .= '$table->' . $dataType . "('{$column->name()}'";
+            }
+
+            $columnAttributes = $column->attributes();
+
+            if (in_array($dataType, self::INTEGER_TYPES)) {
+                $columnAttributes = array_filter(
+                    $columnAttributes,
+                    fn ($columnAttribute) => !is_numeric($columnAttribute),
+                );
+            }
+
+            if (!empty($columnAttributes) && !$this->isIdColumnType($column->dataType())) {
+                $column_definition .= ', ';
+
+                if (in_array($column->dataType(), ['geography', 'geometry'])) {
+                    $columnAttributes[0] = Str::wrap($columnAttributes[0], "'");
+                }
+
+                if (in_array($column->dataType(), ['set', 'enum'])) {
+                    $column_definition .= json_encode($columnAttributes);
+                } else {
+                    $column_definition .= implode(', ', $columnAttributes);
+                }
+            }
+
+            $column_definition .= ')';
+
+            $modifiers = $column->modifiers();
+
+            $foreign = '';
+            $foreign_modifier = $column->isForeignKey();
+
+            if ($this->shouldAddForeignKeyConstraint($column)) {
+                $this->hasForeignKeyConstraints = true;
+                $foreign = $this->buildForeignKey(
+                    $column->name(),
+                    $foreign_modifier === 'foreign' ? null : $foreign_modifier,
+                    $column->dataType(),
+                    $columnAttributes,
+                    $column->modifiers()
+                );
+            }
+
+            foreach (
+                $modifiers as $modifier
+            ) {
+                if ($modifier === 'nullable') {
+                    $column_definition .= '->nullable()';
+                } elseif ($modifier === 'unsigned' && !in_array($dataType, self::UNSIGNABLE_TYPES)) {
+                    $column_definition .= '->unsigned()';
+                } elseif ($modifier === 'default') {
+                    $column_definition .= '->default(' . $this->getDefaultValue($column) . ')';
+                } elseif ($modifier === 'index') {
+                    $column_definition .= '->index()';
+                } elseif ($modifier === 'unique') {
+                    $column_definition .= '->unique()';
+                } elseif ($modifier === 'primary') {
+                    $column_definition .= '->primary()';
+                } elseif ($modifier === 'foreign') {
+                    $column_definition .= $foreign;
+                } elseif (is_string($modifier) && Str::startsWith($modifier, 'foreign:')) {
+                    $column_definition .= $this->buildForeignKey(
+                        $column->name(),
+                        Str::after($modifier, 'foreign:'),
+                        $column->dataType(),
+                        $columnAttributes,
+                        $column->modifiers()
+                    );
+                } elseif (is_string($modifier) && Str::startsWith($modifier, 'onDelete:')) {
+                    $column_definition .= $this->buildOnDeleteClause(Str::after($modifier, 'onDelete:'));
+                } elseif (is_string($modifier) && Str::startsWith($modifier, 'onUpdate:')) {
+                    $column_definition .= $this->buildOnUpdateClause(Str::after($modifier, 'onUpdate:'));
+                }
+            }
+
+            $definition .= $column_definition . ';' . PHP_EOL;
+        }
+
+        if ($model->usesTimestamps() && !($hasCreatedAt || $hasUpdatedAt || $dbHasCreatedAt || $dbHasUpdatedAt)) {
+            $definition .= self::INDENT . '$table->' . $model->timestampsDataType() . '();' . PHP_EOL;
+        }
+
+        return trim($definition);
+    }
+
+    protected function buildRollbackDefinition(Model $model): string
+    {
+        $rollback = '';
+        $existingColumns = $this->getSchemaService()->getTableColumns($model->tableName());
+
+        // Get all columns from the model
+        $columns = $model->columns();
+        $columns = array_values($columns);
+
+        /**
+         * @var \Blueprint\Models\Column $column
+         */
+        foreach ($columns as $column) {
+            $columnName = $column->name();
+            
+            // Only add drop column if the column doesn't exist in the original table
+            if (!in_array($columnName, $existingColumns)) {
+                $rollback .= self::INDENT . "\$table->dropColumn('{$columnName}');" . PHP_EOL;
+            }
+        }
+
+        return trim($rollback);
+    }
+
     protected function populatePolyStub(string $stub, string $parentTable): string
     {
         $stub = str_replace('{{ table }}', $this->getPolyTableName($parentTable), $stub);
@@ -529,7 +734,13 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
     protected function getTablePath($tableName, Carbon $timestamp, $overwrite = false)
     {
         $dir = 'database/migrations/';
-        $name = '_create_' . $tableName . '_table.php';
+        $tableExists = $this->getSchemaService()->tableExists($tableName);
+        
+        if ($tableExists) {
+            $name = '_update_' . $tableName . '_table.php';
+        } else {
+            $name = '_create_' . $tableName . '_table.php';
+        }
 
         if ($overwrite) {
             $migrations = collect($this->filesystem->files($dir))
@@ -555,6 +766,41 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
 
     protected function getClassName(Model $model): string
     {
+        $tableExists = $this->getSchemaService()->tableExists($model->tableName());
+        
+        if ($tableExists) {
+            return 'Update' . Str::studly($model->tableName()) . 'Table';
+        }
+        
         return 'Create' . Str::studly($model->tableName()) . 'Table';
+    }
+
+    protected function getDefaultValue($column)
+    {
+        $default = $column->defaultValue();
+        
+        if (is_null($default)) {
+            return 'null';
+        }
+        
+        if (is_bool($default)) {
+            return $default ? 'true' : 'false';
+        }
+        
+        if (is_numeric($default)) {
+            return $default;
+        }
+        
+        return "'{$default}'";
+    }
+
+    protected function buildOnDeleteClause(string $action): string
+    {
+        return self::ON_DELETE_CLAUSES[$action] ?? self::ON_DELETE_CLAUSES['cascade'];
+    }
+
+    protected function buildOnUpdateClause(string $action): string
+    {
+        return self::ON_UPDATE_CLAUSES[$action] ?? self::ON_UPDATE_CLAUSES['cascade'];
     }
 }

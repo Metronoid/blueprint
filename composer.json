@@ -38,6 +38,7 @@
     "autoload": {
         "psr-4": {
             "Blueprint\\": "src/",
+            "Blueprint\\Controllers\\": "src/Controllers/",
             "BlueprintExtensions\\Constraints\\": "plugins/blueprint-constraints/src/",
             "BlueprintExtensions\\StateMachine\\": "plugins/blueprint-statemachine/src/",
             "BlueprintExtensions\\Auditing\\": "plugins/blueprint-auditing/src/"
@@ -52,5 +53,10 @@
         ]
     },
     "minimum-stability": "dev",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "scripts": {
+        "post-create-project-cmd": [
+            "@php -r \"if (!is_dir('resources/views/dashboard')) mkdir('resources/views/dashboard', 0777, true);\""
+        ]
+    }
 }
