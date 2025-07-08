@@ -1,0 +1,553 @@
+<?php
+
+namespace App\Services\Dashboard;
+
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Config;
+use Blueprint\Services\DashboardPluginManager;
+use Blueprint\Contracts\DashboardPlugin;
+
+class PluginIntegrationService
+{
+    protected DashboardPluginManager $pluginManager;
+    protected array $pluginCache = [];
+    protected array $healthCache = [];
+
+    public function __construct(DashboardPluginManager $pluginManager)
+    {
+        $this->pluginManager = $pluginManager;
+    }
+
+    /**
+     * Get active plugins with health status.
+     */
+    public function getActivePlugins(): array
+    {
+        $cacheKey = 'dashboard.plugins.active';
+        
+        return Cache::remember($cacheKey, 300, function () {
+            $plugins = [];
+            
+            foreach ($this->pluginManager->getEnabledPlugins() as $plugin) {
+                $plugins[] = [
+                    'name' => $plugin->getName(),
+                    'description' => $plugin->getDescription(),
+                    'version' => $plugin->getVersion(),
+                    'enabled' => $plugin->isEnabled(),
+                    'health' => $this->getPluginHealth($plugin),
+                    'widgets_count' => count($plugin->getWidgets()),
+                    'navigation_count' => count($plugin->getNavigation()),
+                    'permissions_count' => count($plugin->getPermissions()),
+                    'api_endpoints_count' => count($plugin->getApiEndpoints()),
+                ];
+            }
+            
+            return $plugins;
+        });
+    }
+
+    /**
+     * Get plugin statistics.
+     */
+    public function getPluginStats(): array
+    {
+        $stats = $this->pluginManager->getPluginStats();
+        
+        return [
+            'total_plugins' => $stats['total'],
+            'enabled_plugins' => $stats['enabled'],
+            'disabled_plugins' => $stats['disabled'],
+            'plugin_health' => $this->getOverallPluginHealth(),
+            'last_updated' => now()->toISOString(),
+            'cache_status' => $this->getCacheStatus(),
+        ];
+    }
+
+    /**
+     * Get plugin extensions (widgets, navigation, etc.).
+     */
+    public function getPluginExtensions(): array
+    {
+        $cacheKey = 'dashboard.plugins.extensions';
+        
+        return Cache::remember($cacheKey, 300, function () {
+            $extensions = [
+                'widgets' => [],
+                'navigation' => [],
+                'permissions' => [],
+                'api_endpoints' => [],
+                'settings' => [],
+                'events' => [],
+            ];
+            
+            foreach ($this->pluginManager->getEnabledPlugins() as $plugin) {
+                $pluginName = $plugin->getName();
+                
+                // Merge widget configurations
+                $pluginWidgets = $plugin->getWidgets();
+                foreach ($pluginWidgets as $widgetName => $widgetConfig) {
+                    $extensions['widgets']["{$pluginName}_{$widgetName}"] = array_merge($widgetConfig, [
+                        'plugin' => $pluginName,
+                        'plugin_version' => $plugin->getVersion(),
+                    ]);
+                }
+                
+                // Merge navigation items
+                $pluginNavigation = $plugin->getNavigation();
+                foreach ($pluginNavigation as $navItem) {
+                    $extensions['navigation'][] = array_merge($navItem, [
+                        'plugin' => $pluginName,
+                        'plugin_version' => $plugin->getVersion(),
+                    ]);
+                }
+                
+                // Merge permissions
+                $pluginPermissions = $plugin->getPermissions();
+                foreach ($pluginPermissions as $permission) {
+                    $extensions['permissions'][] = "{$pluginName}.{$permission}";
+                }
+                
+                // Merge API endpoints
+                $pluginApiEndpoints = $plugin->getApiEndpoints();
+                foreach ($pluginApiEndpoints as $endpoint => $url) {
+                    $extensions['api_endpoints']["{$pluginName}_{$endpoint}"] = $url;
+                }
+                
+                // Merge settings
+                $pluginSettings = $plugin->getSettings();
+                $extensions['settings'][$pluginName] = $pluginSettings;
+                
+                // Get plugin events
+                $pluginEvents = $this->getPluginEvents($plugin);
+                $extensions['events'][$pluginName] = $pluginEvents;
+            }
+            
+            return $extensions;
+        });
+    }
+
+    /**
+     * Get plugin settings.
+     */
+    public function getPluginSettings(): array
+    {
+        $cacheKey = 'dashboard.plugins.settings';
+        
+        return Cache::remember($cacheKey, 300, function () {
+            $settings = [];
+            
+            foreach ($this->pluginManager->getEnabledPlugins() as $plugin) {
+                $settings[$plugin->getName()] = $plugin->getSettings();
+            }
+            
+            return $settings;
+        });
+    }
+
+    /**
+     * Get overall plugin health.
+     */
+    public function getOverallPluginHealth(): array
+    {
+        $cacheKey = 'dashboard.plugins.health.overall';
+        
+        return Cache::remember($cacheKey, 60, function () {
+            $total = 0;
+            $healthy = 0;
+            $warning = 0;
+            $error = 0;
+            $disabled = 0;
+            
+            foreach ($this->pluginManager->getPlugins() as $plugin) {
+                $total++;
+                $health = $this->getPluginHealth($plugin);
+                
+                switch ($health['status']) {
+                    case 'healthy':
+                        $healthy++;
+                        break;
+                    case 'warning':
+                        $warning++;
+                        break;
+                    case 'error':
+                        $error++;
+                        break;
+                    case 'disabled':
+                        $disabled++;
+                        break;
+                }
+            }
+            
+            return [
+                'total' => $total,
+                'healthy' => $healthy,
+                'warning' => $warning,
+                'error' => $error,
+                'disabled' => $disabled,
+                'overall_status' => $this->calculateOverallStatus($healthy, $warning, $error, $total),
+                'last_check' => now()->toISOString(),
+            ];
+        });
+    }
+
+    /**
+     * Get plugin navigation.
+     */
+    public function getPluginNavigation(): array
+    {
+        $extensions = $this->getPluginExtensions();
+        return $extensions['navigation'] ?? [];
+    }
+
+    /**
+     * Get plugin permissions.
+     */
+    public function getPluginPermissions(): array
+    {
+        $extensions = $this->getPluginExtensions();
+        return $extensions['permissions'] ?? [];
+    }
+
+    /**
+     * Get plugin API endpoints.
+     */
+    public function getPluginApiEndpoints(): array
+    {
+        $extensions = $this->getPluginExtensions();
+        return $extensions['api_endpoints'] ?? [];
+    }
+
+    /**
+     * Get plugin widgets.
+     */
+    public function getPluginWidgets(): array
+    {
+        $extensions = $this->getPluginExtensions();
+        return $extensions['widgets'] ?? [];
+    }
+
+    /**
+     * Get widget data from plugins.
+     */
+    public function getWidgetData(string $widgetName): ?array
+    {
+        $cacheKey = "dashboard.plugin.widget.{$widgetName}";
+        
+        return Cache::remember($cacheKey, 60, function () use ($widgetName) {
+            foreach ($this->pluginManager->getEnabledPlugins() as $plugin) {
+                $pluginWidgets = $plugin->getWidgets();
+                
+                if (isset($pluginWidgets[$widgetName])) {
+                    return $this->generatePluginWidgetData($plugin, $widgetName, $pluginWidgets[$widgetName]);
+                }
+            }
+            
+            return null;
+        });
+    }
+
+    /**
+     * Get plugin data.
+     */
+    public function getData(): array
+    {
+        return [
+            'active_plugins' => $this->getActivePlugins(),
+            'plugin_stats' => $this->getPluginStats(),
+            'plugin_extensions' => $this->getPluginExtensions(),
+            'plugin_settings' => $this->getPluginSettings(),
+            'plugin_health' => $this->getOverallPluginHealth(),
+        ];
+    }
+
+    /**
+     * Enable a plugin.
+     */
+    public function enablePlugin(string $pluginName): bool
+    {
+        $result = $this->pluginManager->enablePlugin($pluginName);
+        
+        if ($result) {
+            $this->clearPluginCache();
+            $this->firePluginEvent($pluginName, 'enabled');
+            Log::info("Plugin {$pluginName} enabled");
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Disable a plugin.
+     */
+    public function disablePlugin(string $pluginName): bool
+    {
+        $result = $this->pluginManager->disablePlugin($pluginName);
+        
+        if ($result) {
+            $this->clearPluginCache();
+            $this->firePluginEvent($pluginName, 'disabled');
+            Log::info("Plugin {$pluginName} disabled");
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Get plugin configuration.
+     */
+    public function getPluginConfig(string $pluginName): ?array
+    {
+        $plugin = $this->pluginManager->getPlugin($pluginName);
+        
+        if (!$plugin) {
+            return null;
+        }
+        
+        return [
+            'name' => $plugin->getName(),
+            'description' => $plugin->getDescription(),
+            'version' => $plugin->getVersion(),
+            'enabled' => $plugin->isEnabled(),
+            'health' => $this->getPluginHealth($plugin),
+            'widgets' => $plugin->getWidgets(),
+            'navigation' => $plugin->getNavigation(),
+            'permissions' => $plugin->getPermissions(),
+            'api_endpoints' => $plugin->getApiEndpoints(),
+            'settings' => $plugin->getSettings(),
+        ];
+    }
+
+    /**
+     * Update plugin configuration.
+     */
+    public function updatePluginConfig(string $pluginName, array $config): bool
+    {
+        $plugin = $this->pluginManager->getPlugin($pluginName);
+        
+        if (!$plugin) {
+            return false;
+        }
+        
+        try {
+            // Update plugin settings
+            if (isset($config['settings'])) {
+                // This would be implemented by each plugin
+                // For now, we'll just log the update
+                Log::info("Plugin {$pluginName} config updated", $config);
+            }
+            
+            $this->clearPluginCache();
+            $this->firePluginEvent($pluginName, 'configured', $config);
+            
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Failed to update plugin {$pluginName} config: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get plugin health status.
+     */
+    protected function getPluginHealth(DashboardPlugin $plugin): array
+    {
+        $pluginName = $plugin->getName();
+        $cacheKey = "dashboard.plugin.health.{$pluginName}";
+        
+        return Cache::remember($cacheKey, 60, function () use ($plugin) {
+            try {
+                // Check if plugin is enabled
+                if (!$plugin->isEnabled()) {
+                    return [
+                        'status' => 'disabled',
+                        'message' => 'Plugin is disabled',
+                        'enabled' => false,
+                        'version' => $plugin->getVersion(),
+                        'widgets_count' => count($plugin->getWidgets()),
+                        'navigation_count' => count($plugin->getNavigation()),
+                        'permissions_count' => count($plugin->getPermissions()),
+                        'last_check' => now()->toISOString(),
+                    ];
+                }
+                
+                // Check plugin functionality
+                $widgets = $plugin->getWidgets();
+                $navigation = $plugin->getNavigation();
+                $permissions = $plugin->getPermissions();
+                
+                $issues = [];
+                
+                // Check for basic functionality
+                if (empty($widgets) && empty($navigation)) {
+                    $issues[] = 'No widgets or navigation items provided';
+                }
+                
+                // Check version compatibility
+                $version = $plugin->getVersion();
+                if (!$this->isVersionCompatible($version)) {
+                    $issues[] = 'Version compatibility issue';
+                }
+                
+                $status = empty($issues) ? 'healthy' : 'warning';
+                $message = empty($issues) ? 'Plugin is working correctly' : implode(', ', $issues);
+                
+                return [
+                    'status' => $status,
+                    'message' => $message,
+                    'enabled' => true,
+                    'version' => $version,
+                    'widgets_count' => count($widgets),
+                    'navigation_count' => count($navigation),
+                    'permissions_count' => count($permissions),
+                    'issues' => $issues,
+                    'last_check' => now()->toISOString(),
+                ];
+            } catch (\Exception $e) {
+                Log::error("Error checking plugin health for {$plugin->getName()}: " . $e->getMessage());
+                
+                return [
+                    'status' => 'error',
+                    'message' => 'Plugin health check failed: ' . $e->getMessage(),
+                    'enabled' => $plugin->isEnabled(),
+                    'version' => $plugin->getVersion(),
+                    'widgets_count' => 0,
+                    'navigation_count' => 0,
+                    'permissions_count' => 0,
+                    'error' => $e->getMessage(),
+                    'last_check' => now()->toISOString(),
+                ];
+            }
+        });
+    }
+
+    /**
+     * Calculate overall plugin status.
+     */
+    protected function calculateOverallStatus(int $healthy, int $warning, int $error, int $total): string
+    {
+        if ($error > 0) {
+            return 'error';
+        }
+        
+        if ($warning > 0) {
+            return 'warning';
+        }
+        
+        if ($healthy === $total) {
+            return 'healthy';
+        }
+        
+        return 'warning';
+    }
+
+    /**
+     * Check version compatibility.
+     */
+    protected function isVersionCompatible(string $version): bool
+    {
+        // Basic version compatibility check
+        // This could be enhanced with more sophisticated version checking
+        return version_compare($version, '1.0.0', '>=');
+    }
+
+    /**
+     * Generate plugin widget data.
+     */
+    protected function generatePluginWidgetData(DashboardPlugin $plugin, string $widgetName, array $widgetConfig): array
+    {
+        try {
+            return [
+                'data' => $this->getPluginWidgetData($plugin, $widgetName),
+                'config' => $widgetConfig,
+                'metadata' => [
+                    'plugin' => $plugin->getName(),
+                    'plugin_version' => $plugin->getVersion(),
+                    'widget_name' => $widgetName,
+                    'generated_at' => now()->toISOString(),
+                ],
+            ];
+        } catch (\Exception $e) {
+            Log::error("Error generating widget data for plugin {$plugin->getName()}: " . $e->getMessage());
+            
+            return [
+                'data' => [],
+                'config' => $widgetConfig,
+                'error' => 'Failed to generate widget data',
+                'metadata' => [
+                    'plugin' => $plugin->getName(),
+                    'widget_name' => $widgetName,
+                    'error' => $e->getMessage(),
+                ],
+            ];
+        }
+    }
+
+    /**
+     * Get plugin widget data.
+     */
+    protected function getPluginWidgetData(DashboardPlugin $plugin, string $widgetName): array
+    {
+        // This would be implemented by each plugin
+        // For now, return empty data
+        return [];
+    }
+
+    /**
+     * Get plugin events.
+     */
+    protected function getPluginEvents(DashboardPlugin $plugin): array
+    {
+        // This would be implemented by each plugin
+        // For now, return empty events
+        return [];
+    }
+
+    /**
+     * Fire plugin event.
+     */
+    protected function firePluginEvent(string $pluginName, string $event, array $data = []): void
+    {
+        Event::dispatch("plugin.{$event}", [
+            'plugin' => $pluginName,
+            'data' => $data,
+            'timestamp' => now(),
+        ]);
+    }
+
+    /**
+     * Clear plugin cache.
+     */
+    protected function clearPluginCache(): void
+    {
+        $cacheKeys = [
+            'dashboard.plugins.active',
+            'dashboard.plugins.extensions',
+            'dashboard.plugins.settings',
+            'dashboard.plugins.health.overall',
+        ];
+        
+        foreach ($cacheKeys as $key) {
+            Cache::forget($key);
+        }
+        
+        // Clear individual plugin health caches
+        foreach ($this->pluginManager->getPlugins() as $plugin) {
+            Cache::forget("dashboard.plugin.health.{$plugin->getName()}");
+        }
+    }
+
+    /**
+     * Get cache status.
+     */
+    protected function getCacheStatus(): array
+    {
+        return [
+            'enabled' => Config::get('dashboard.cache.enabled', true),
+            'ttl' => Config::get('dashboard.cache.ttl', 300),
+            'driver' => Config::get('dashboard.cache.driver', 'redis'),
+            'prefix' => Config::get('dashboard.cache.prefix', 'dashboard.'),
+        ];
+    }
+} 

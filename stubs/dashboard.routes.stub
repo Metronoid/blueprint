@@ -2,14 +2,234 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Dashboard\{{ dashboardName }}Controller;
+use App\Http\Controllers\Api\Dashboard\Widgets\{{ widgetControllers }};
 
-Route::middleware(['auth', 'dashboard.access'])->group(function () {
-    Route::prefix('dashboard')->group(function () {
-        Route::get('/', [{{ dashboardName }}Controller::class, 'index'])->name('dashboard.index');
+/*
+|--------------------------------------------------------------------------
+| Dashboard API Routes
+|--------------------------------------------------------------------------
+|
+| These routes handle all dashboard-related API endpoints including
+| widget data, plugin management, and dashboard configuration.
+|
+*/
+
+Route::prefix('api/dashboard')->middleware(['auth:sanctum', 'dashboard.access'])->group(function () {
+    
+    // Main dashboard endpoints
+    Route::get('/', [{{ dashboardName }}Controller::class, 'index'])
+        ->name('dashboard.index');
+    
+    Route::get('/config', [{{ dashboardName }}Controller::class, 'config'])
+        ->name('dashboard.config');
+    
+    Route::get('/stats', [{{ dashboardName }}Controller::class, 'stats'])
+        ->name('dashboard.stats');
+    
+    Route::post('/refresh', [{{ dashboardName }}Controller::class, 'refresh'])
+        ->name('dashboard.refresh');
+    
+    // Plugin management
+    Route::get('/plugins', [{{ dashboardName }}Controller::class, 'plugins'])
+        ->name('dashboard.plugins');
+    
+    Route::post('/plugins/{plugin}/enable', [{{ dashboardName }}Controller::class, 'enablePlugin'])
+        ->name('dashboard.plugins.enable');
+    
+    Route::post('/plugins/{plugin}/disable', [{{ dashboardName }}Controller::class, 'disablePlugin'])
+        ->name('dashboard.plugins.disable');
+    
+    Route::get('/plugins/{plugin}/config', [{{ dashboardName }}Controller::class, 'getPluginConfig'])
+        ->name('dashboard.plugins.config');
+    
+    Route::put('/plugins/{plugin}/config', [{{ dashboardName }}Controller::class, 'updatePluginConfig'])
+        ->name('dashboard.plugins.config.update');
+    
+    // Widget endpoints
+    Route::prefix('widgets')->group(function () {
+        Route::get('/', [{{ dashboardName }}Controller::class, 'getWidgets'])
+            ->name('dashboard.widgets.index');
         
-        // Widget data routes
-        Route::prefix('widgets')->group(function () {
-{{ widgetRoutes }}
+        Route::get('/{widget}', [{{ dashboardName }}Controller::class, 'widget'])
+            ->name('dashboard.widgets.show');
+        
+        Route::post('/{widget}/refresh', [{{ dashboardName }}Controller::class, 'refreshWidget'])
+            ->name('dashboard.widgets.refresh');
+        
+        Route::put('/{widget}/config', [{{ dashboardName }}Controller::class, 'updateWidgetConfig'])
+            ->name('dashboard.widgets.config.update');
+        
+        // Widget-specific endpoints
+        {{ widgetRoutes }}
+    });
+    
+    // Health check endpoints
+    Route::prefix('health')->group(function () {
+        Route::get('/', [{{ dashboardName }}Controller::class, 'health'])
+            ->name('dashboard.health');
+        
+        Route::get('/widgets', [{{ dashboardName }}Controller::class, 'widgetHealth'])
+            ->name('dashboard.health.widgets');
+        
+        Route::get('/plugins', [{{ dashboardName }}Controller::class, 'pluginHealth'])
+            ->name('dashboard.health.plugins');
+        
+        Route::get('/cache', [{{ dashboardName }}Controller::class, 'cacheHealth'])
+            ->name('dashboard.health.cache');
+    });
+    
+    // Analytics endpoints
+    Route::prefix('analytics')->group(function () {
+        Route::get('/', [{{ dashboardName }}Controller::class, 'analytics'])
+            ->name('dashboard.analytics');
+        
+        Route::get('/usage', [{{ dashboardName }}Controller::class, 'usageAnalytics'])
+            ->name('dashboard.analytics.usage');
+        
+        Route::get('/performance', [{{ dashboardName }}Controller::class, 'performanceAnalytics'])
+            ->name('dashboard.analytics.performance');
+        
+        Route::get('/widgets', [{{ dashboardName }}Controller::class, 'widgetAnalytics'])
+            ->name('dashboard.analytics.widgets');
+    });
+    
+    // Export/Import endpoints
+    Route::prefix('export')->group(function () {
+        Route::get('/', [{{ dashboardName }}Controller::class, 'export'])
+            ->name('dashboard.export');
+        
+        Route::post('/import', [{{ dashboardName }}Controller::class, 'import'])
+            ->name('dashboard.import');
+        
+        Route::get('/template', [{{ dashboardName }}Controller::class, 'exportTemplate'])
+            ->name('dashboard.export.template');
+    });
+    
+    // Settings endpoints
+    Route::prefix('settings')->group(function () {
+        Route::get('/', [{{ dashboardName }}Controller::class, 'getSettings'])
+            ->name('dashboard.settings');
+        
+        Route::put('/', [{{ dashboardName }}Controller::class, 'updateSettings'])
+            ->name('dashboard.settings.update');
+        
+        Route::get('/theme', [{{ dashboardName }}Controller::class, 'getTheme'])
+            ->name('dashboard.settings.theme');
+        
+        Route::put('/theme', [{{ dashboardName }}Controller::class, 'updateTheme'])
+            ->name('dashboard.settings.theme.update');
+    });
+    
+    // Cache management
+    Route::prefix('cache')->group(function () {
+        Route::get('/status', [{{ dashboardName }}Controller::class, 'cacheStatus'])
+            ->name('dashboard.cache.status');
+        
+        Route::post('/clear', [{{ dashboardName }}Controller::class, 'clearCache'])
+            ->name('dashboard.cache.clear');
+        
+        Route::post('/clear/widgets', [{{ dashboardName }}Controller::class, 'clearWidgetCache'])
+            ->name('dashboard.cache.clear.widgets');
+        
+        Route::post('/clear/plugins', [{{ dashboardName }}Controller::class, 'clearPluginCache'])
+            ->name('dashboard.cache.clear.plugins');
+    });
+    
+    // Notifications
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [{{ dashboardName }}Controller::class, 'getNotifications'])
+            ->name('dashboard.notifications');
+        
+        Route::post('/mark-read', [{{ dashboardName }}Controller::class, 'markNotificationsRead'])
+            ->name('dashboard.notifications.mark-read');
+        
+        Route::delete('/{notification}', [{{ dashboardName }}Controller::class, 'deleteNotification'])
+            ->name('dashboard.notifications.delete');
+    });
+    
+    // Search functionality
+    Route::get('/search', [{{ dashboardName }}Controller::class, 'search'])
+        ->name('dashboard.search');
+    
+    // Real-time updates (WebSocket fallback)
+    Route::get('/updates', [{{ dashboardName }}Controller::class, 'getUpdates'])
+        ->name('dashboard.updates');
+    
+    // Webhook endpoints for external integrations
+    Route::prefix('webhooks')->group(function () {
+        Route::post('/widget-update', [{{ dashboardName }}Controller::class, 'widgetWebhook'])
+            ->name('dashboard.webhooks.widget');
+        
+        Route::post('/plugin-event', [{{ dashboardName }}Controller::class, 'pluginWebhook'])
+            ->name('dashboard.webhooks.plugin');
+    });
+});
+
+// Public dashboard endpoints (if needed)
+Route::prefix('api/dashboard/public')->group(function () {
+    Route::get('/status', [{{ dashboardName }}Controller::class, 'publicStatus'])
+        ->name('dashboard.public.status');
+    
+    Route::get('/health', [{{ dashboardName }}Controller::class, 'publicHealth'])
+        ->name('dashboard.public.health');
+});
+
+// Admin-only dashboard endpoints
+Route::prefix('api/dashboard/admin')->middleware(['auth:sanctum', 'dashboard.admin'])->group(function () {
+    Route::get('/logs', [{{ dashboardName }}Controller::class, 'getLogs'])
+        ->name('dashboard.admin.logs');
+    
+    Route::get('/system-info', [{{ dashboardName }}Controller::class, 'getSystemInfo'])
+        ->name('dashboard.admin.system');
+    
+    Route::post('/maintenance', [{{ dashboardName }}Controller::class, 'toggleMaintenance'])
+        ->name('dashboard.admin.maintenance');
+    
+    Route::post('/backup', [{{ dashboardName }}Controller::class, 'createBackup'])
+        ->name('dashboard.admin.backup');
+    
+    Route::get('/backups', [{{ dashboardName }}Controller::class, 'listBackups'])
+        ->name('dashboard.admin.backups');
+    
+    Route::delete('/backups/{backup}', [{{ dashboardName }}Controller::class, 'deleteBackup'])
+        ->name('dashboard.admin.backups.delete');
+});
+
+// Plugin-specific routes (auto-generated)
+Route::prefix('api/dashboard/plugins')->middleware(['auth:sanctum', 'dashboard.access'])->group(function () {
+    {{ pluginRoutes }}
+});
+
+// Widget-specific API routes
+Route::prefix('api/dashboard/widgets')->middleware(['auth:sanctum', 'dashboard.access'])->group(function () {
+    {{ widgetApiRoutes }}
+});
+
+// Rate limiting for dashboard API
+Route::middleware(['throttle:dashboard'])->group(function () {
+    Route::prefix('api/dashboard')->group(function () {
+        Route::get('/analytics', [{{ dashboardName }}Controller::class, 'analytics']);
+        Route::get('/search', [{{ dashboardName }}Controller::class, 'search']);
+    });
+});
+
+// CORS headers for dashboard API
+Route::middleware(['cors'])->group(function () {
+    Route::prefix('api/dashboard')->group(function () {
+        Route::options('*', function () {
+            return response('', 200);
         });
     });
+});
+
+// API documentation routes
+Route::prefix('api/dashboard/docs')->group(function () {
+    Route::get('/', [{{ dashboardName }}Controller::class, 'apiDocs'])
+        ->name('dashboard.api.docs');
+    
+    Route::get('/openapi.json', [{{ dashboardName }}Controller::class, 'openApiSpec'])
+        ->name('dashboard.api.openapi');
+    
+    Route::get('/postman', [{{ dashboardName }}Controller::class, 'postmanCollection'])
+        ->name('dashboard.api.postman');
 }); 

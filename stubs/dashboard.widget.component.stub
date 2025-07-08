@@ -1,115 +1,336 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
-export default function {{ widgetName }}Widget({ data, config }) {
-  const renderWidget = () => {
-    switch (config.type) {
-      case 'chart':
-        return <ChartWidget data={data} config={config} />;
-      case 'table':
-        return <TableWidget data={data} config={config} />;
-      case 'metric':
-        return <MetricWidget data={data} config={config} />;
-      case 'list':
-        return <ListWidget data={data} config={config} />;
-      default:
-        return <div>Unknown widget type: {config.type}</div>;
-    }
-  };
+interface {{ widgetName }}WidgetProps {
+    data: any;
+    config: any;
+    onRefresh?: () => void;
+    onAction?: (action: string, data: any) => void;
+}
 
-  return (
-    <div className="dashboard-widget">
-      <div className="widget-header">
-        <h3>{{ widgetTitle }}</h3>
-        <div className="widget-actions">
-{{ actions }}
+export default function {{ widgetName }}Widget({ 
+    data, 
+    config, 
+    onRefresh, 
+    onAction 
+}: {{ widgetName }}WidgetProps) {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [localData, setLocalData] = useState(data);
+
+    useEffect(() => {
+        setLocalData(data);
+    }, [data]);
+
+    const handleRefresh = async () => {
+        if (onRefresh) {
+            setLoading(true);
+            try {
+                await onRefresh();
+                setError(null);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    const handleAction = (action: string, actionData: any) => {
+        if (onAction) {
+            onAction(action, actionData);
+        }
+    };
+
+    const renderContent = () => {
+        if (loading) {
+            return (
+                <div className="widget-loading">
+                    <div className="loading-spinner"></div>
+                    <p>Loading...</p>
+                </div>
+            );
+        }
+
+        if (error) {
+            return (
+                <div className="widget-error">
+                    <p>Error: {error}</p>
+                    <button onClick={handleRefresh}>Retry</button>
+                </div>
+            );
+        }
+
+        switch (config.type || '{{ widgetType }}') {
+            case 'metric':
+                return renderMetric();
+            case 'table':
+                return renderTable();
+            case 'chart':
+                return renderChart();
+            case 'list':
+                return renderList();
+            default:
+                return renderDefault();
+        }
+    };
+
+    const renderMetric = () => {
+        const value = localData?.value || localData?.count || 0;
+        const format = config.format || 'number';
+        
+        return (
+            <div className="metric-widget">
+                <div className="metric-value">
+                    {format === 'currency' ? `$${value.toLocaleString()}` : 
+                     format === 'percentage' ? `${value}%` : 
+                     value.toLocaleString()}
+                </div>
+                <div className="metric-label">{config.title || '{{ widgetTitle }}'}</div>
+            </div>
+        );
+    };
+
+    const renderTable = () => {
+        const tableData = localData?.data || [];
+        const columns = config.columns || Object.keys(tableData[0] || {});
+        
+        return (
+            <div className="table-widget">
+                <table>
+                    <thead>
+                        <tr>
+                            {columns.map((column: string) => (
+                                <th key={column}>{column}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {tableData.map((row: any, index: number) => (
+                            <tr key={index}>
+                                {columns.map((column: string) => (
+                                    <td key={column}>{row[column]}</td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
+    const renderChart = () => {
+        return (
+            <div className="chart-widget">
+                <div className="chart-placeholder">
+                    <p>Chart component for {{ widgetName }}</p>
+                    <p>Data: {JSON.stringify(localData)}</p>
+                </div>
+            </div>
+        );
+    };
+
+    const renderList = () => {
+        const listData = localData?.data || [];
+        
+        return (
+            <div className="list-widget">
+                <ul>
+                    {listData.map((item: any, index: number) => (
+                        <li key={index}>
+                            {item.title || item.name || JSON.stringify(item)}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        );
+    };
+
+    const renderDefault = () => {
+        return (
+            <div className="default-widget">
+                <p>Widget: {{ widgetTitle }}</p>
+                <p>Type: {{ widgetType }}</p>
+                <p>Data: {JSON.stringify(localData)}</p>
+            </div>
+        );
+    };
+
+    return (
+        <div className="widget {{ widgetName }}-widget">
+            <div className="widget-header">
+                <h3 className="widget-title">{{ widgetTitle }}</h3>
+                <div className="widget-actions">
+                    <button 
+                        className="refresh-btn"
+                        onClick={handleRefresh}
+                        disabled={loading}
+                        title="Refresh widget"
+                    >
+                        ↻
+                    </button>
+                </div>
+            </div>
+            
+            <div className="widget-content">
+                {renderContent()}
+            </div>
+
+            {/* Widget Actions */}
+            {{ actions }}
+
+            {/* API Integration */}
+            {{ apiIntegration }}
+
+            <style jsx>{`
+                .widget {
+                    background: white;
+                    border: 1px solid var(--dashboard-border-color, #e5e7eb);
+                    border-radius: 0.5rem;
+                    padding: 1rem;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                }
+
+                .widget-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 1rem;
+                    padding-bottom: 0.5rem;
+                    border-bottom: 1px solid var(--dashboard-border-color, #e5e7eb);
+                }
+
+                .widget-title {
+                    font-size: 1.125rem;
+                    font-weight: 600;
+                    margin: 0;
+                    color: var(--dashboard-text-color, #1f2937);
+                }
+
+                .widget-actions {
+                    display: flex;
+                    gap: 0.5rem;
+                }
+
+                .refresh-btn {
+                    background: none;
+                    border: 1px solid var(--dashboard-border-color, #e5e7eb);
+                    padding: 0.25rem 0.5rem;
+                    border-radius: 0.25rem;
+                    cursor: pointer;
+                    font-size: 0.875rem;
+                    transition: background-color 0.2s ease;
+                }
+
+                .refresh-btn:hover:not(:disabled) {
+                    background: var(--dashboard-background-color, #f9fafb);
+                }
+
+                .refresh-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+                .widget-content {
+                    min-height: 100px;
+                }
+
+                .widget-loading,
+                .widget-error {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100px;
+                    text-align: center;
+                }
+
+                .loading-spinner {
+                    width: 20px;
+                    height: 20px;
+                    border: 2px solid var(--dashboard-border-color, #e5e7eb);
+                    border-top: 2px solid var(--dashboard-accent-color, #3b82f6);
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin-bottom: 0.5rem;
+                }
+
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+
+                .widget-error {
+                    color: #dc2626;
+                }
+
+                .widget-error button {
+                    background: var(--dashboard-accent-color, #3b82f6);
+                    color: white;
+                    border: none;
+                    padding: 0.25rem 0.5rem;
+                    border-radius: 0.25rem;
+                    cursor: pointer;
+                    margin-top: 0.5rem;
+                }
+
+                .metric-widget {
+                    text-align: center;
+                }
+
+                .metric-value {
+                    font-size: 2rem;
+                    font-weight: 700;
+                    color: var(--dashboard-accent-color, #3b82f6);
+                    margin-bottom: 0.5rem;
+                }
+
+                .metric-label {
+                    color: var(--dashboard-secondary-color, #6b7280);
+                    font-size: 0.875rem;
+                }
+
+                .table-widget table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+
+                .table-widget th,
+                .table-widget td {
+                    padding: 0.5rem;
+                    text-align: left;
+                    border-bottom: 1px solid var(--dashboard-border-color, #e5e7eb);
+                }
+
+                .table-widget th {
+                    font-weight: 600;
+                    background: var(--dashboard-background-color, #f9fafb);
+                }
+
+                .list-widget ul {
+                    list-style: none;
+                    padding: 0;
+                    margin: 0;
+                }
+
+                .list-widget li {
+                    padding: 0.5rem 0;
+                    border-bottom: 1px solid var(--dashboard-border-color, #e5e7eb);
+                }
+
+                .list-widget li:last-child {
+                    border-bottom: none;
+                }
+
+                .chart-widget,
+                .default-widget {
+                    text-align: center;
+                    color: var(--dashboard-secondary-color, #6b7280);
+                }
+
+                .chart-placeholder {
+                    padding: 2rem;
+                }
+            `}</style>
         </div>
-      </div>
-      
-      <div className="widget-content">
-        {renderWidget()}
-      </div>
-      
-      <style jsx>{`
-        .dashboard-widget {
-          background: white;
-          border-radius: 0.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          overflow: hidden;
-        }
-        
-        .widget-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem;
-          border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .widget-header h3 {
-          margin: 0;
-          font-size: 1.1rem;
-          font-weight: 600;
-        }
-        
-        .widget-content {
-          padding: 1rem;
-        }
-      `}</style>
-    </div>
-  );
-}
-
-// Widget type components
-function ChartWidget({ data, config }) {
-  return (
-    <div className="chart-widget">
-      <p>Chart widget - {data?.length || 0} data points</p>
-    </div>
-  );
-}
-
-function TableWidget({ data, config }) {
-  return (
-    <div className="table-widget">
-      <table>
-        <thead>
-          <tr>
-            {data?.[0] && Object.keys(data[0]).map(key => (
-              <th key={key}>{key}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data?.map((row, index) => (
-            <tr key={index}>
-              {Object.values(row).map((value, i) => (
-                <td key={i}>{value}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function MetricWidget({ data, config }) {
-  return (
-    <div className="metric-widget">
-      <div className="metric-value">{data?.value || 0}</div>
-      <div className="metric-label">{config.title}</div>
-    </div>
-  );
-}
-
-function ListWidget({ data, config }) {
-  return (
-    <div className="list-widget">
-      <ul>
-        {data?.map((item, index) => (
-          <li key={index}>{item.name || item.title || item}</li>
-        ))}
-      </ul>
-    </div>
-  );
+    );
 } 

@@ -2,47 +2,383 @@
 
 namespace App\Services\Dashboard\Widgets;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 {{ modelImports }}
 
 class {{ widgetName }}Service
 {
-    public function getData(): array
+    protected array $config = [];
+    protected string $cacheKey;
+    protected int $cacheTtl;
+
+    public function __construct(array $config = [])
     {
-        $query = $this->buildQuery();
+        $this->config = $config;
+        $this->cacheKey = "dashboard.widget.{{ widgetName }}";
+        $this->cacheTtl = $config['cache_ttl'] ?? 60;
+    }
+
+    /**
+     * Get widget data with caching and error handling.
+     */
+    public function getData(array $config = []): array
+    {
+        $this->config = array_merge($this->config, $config);
+        
+        return Cache::remember($this->cacheKey, $this->cacheTtl, function () {
+            try {
+                return $this->generateData();
+            } catch (\Exception $e) {
+                Log::error("Error generating data for widget {{ widgetName }}: " . $e->getMessage());
+                
+                return [
+                    'error' => 'Failed to generate widget data',
+                    'message' => $e->getMessage(),
+                    'timestamp' => now()->toISOString(),
+                ];
+            }
+        });
+    }
+
+    /**
+     * Generate widget data based on type.
+     */
+    protected function generateData(): array
+    {
+        $type = $this->config['type'] ?? 'metric';
+        
+        return match ($type) {
+            'metric' => $this->generateMetricData(),
+            'table' => $this->generateTableData(),
+            'chart' => $this->generateChartData(),
+            'list' => $this->generateListData(),
+            default => $this->generateDefaultData(),
+        };
+    }
+
+    /**
+     * Generate metric data.
+     */
+    protected function generateMetricData(): array
+    {
+        $value = $this->getMetricValue();
+        $previousValue = $this->getPreviousMetricValue();
+        $trend = $this->calculateTrend($value, $previousValue);
         
         return [
-            'data' => $query->get(),
-            'config' => $this->getConfig(),
+            'value' => $value,
+            'previous_value' => $previousValue,
+            'trend' => $trend,
+            'format' => $this->config['format'] ?? 'number',
+            'unit' => $this->config['unit'] ?? '',
+            'color' => $this->config['color'] ?? 'blue',
+            'metadata' => [
+                'generated_at' => now()->toISOString(),
+                'widget_name' => '{{ widgetName }}',
+                'cache_key' => $this->cacheKey,
+            ],
         ];
     }
 
-    private function buildQuery(): Builder
+    /**
+     * Generate table data.
+     */
+    protected function generateTableData(): array
+    {
+        $query = $this->buildQuery();
+        
+        // Apply pagination
+        $perPage = $this->config['limit'] ?? 10;
+        $data = $query->paginate($perPage);
+        
+        return [
+            'data' => $data->items(),
+            'pagination' => [
+                'current_page' => $data->currentPage(),
+                'per_page' => $data->perPage(),
+                'total' => $data->total(),
+                'last_page' => $data->lastPage(),
+            ],
+            'columns' => $this->getTableColumns(),
+            'metadata' => [
+                'generated_at' => now()->toISOString(),
+                'widget_name' => '{{ widgetName }}',
+                'cache_key' => $this->cacheKey,
+            ],
+        ];
+    }
+
+    /**
+     * Generate chart data.
+     */
+    protected function generateChartData(): array
+    {
+        $chartType = $this->config['chart_type'] ?? 'line';
+        $timeframe = $this->config['timeframe'] ?? '7d';
+        
+        $data = $this->getChartData($chartType, $timeframe);
+        
+        return [
+            'type' => $chartType,
+            'data' => $data,
+            'options' => $this->getChartOptions($chartType),
+            'metadata' => [
+                'generated_at' => now()->toISOString(),
+                'widget_name' => '{{ widgetName }}',
+                'cache_key' => $this->cacheKey,
+            ],
+        ];
+    }
+
+    /**
+     * Generate list data.
+     */
+    protected function generateListData(): array
+    {
+        $query = $this->buildQuery();
+        $limit = $this->config['limit'] ?? 10;
+        
+        $data = $query->limit($limit)->get();
+        
+        return [
+            'items' => $data,
+            'total' => $data->count(),
+            'limit' => $limit,
+            'metadata' => [
+                'generated_at' => now()->toISOString(),
+                'widget_name' => '{{ widgetName }}',
+                'cache_key' => $this->cacheKey,
+            ],
+        ];
+    }
+
+    /**
+     * Generate default data.
+     */
+    protected function generateDefaultData(): array
+    {
+        return [
+            'data' => [],
+            'config' => $this->config,
+            'metadata' => [
+                'generated_at' => now()->toISOString(),
+                'widget_name' => '{{ widgetName }}',
+                'cache_key' => $this->cacheKey,
+            ],
+        ];
+    }
+
+    /**
+     * Build the base query for the widget.
+     */
+    protected function buildQuery()
     {
         {{ modelQuery }}
-
-        $this->applyColumns($query);
-        $this->applyFilters($query);
+        
+        // Apply filters
+        {{ filters }}
+        
+        // Apply sorting
+        if (isset($this->config['sort_by'])) {
+            $query->orderBy($this->config['sort_by'], $this->config['sort_order'] ?? 'desc');
+        }
         
         return $query;
     }
 
-    private function applyColumns(Builder $query): void
+    /**
+     * Get metric value.
+     */
+    protected function getMetricValue(): mixed
     {
-        {{ columns }}
+        $query = $this->buildQuery();
+        
+        return match ($this->config['aggregation'] ?? 'count') {
+            'count' => $query->count(),
+            'sum' => $query->sum($this->config['column'] ?? 'id'),
+            'avg' => $query->avg($this->config['column'] ?? 'id'),
+            'max' => $query->max($this->config['column'] ?? 'id'),
+            'min' => $query->min($this->config['column'] ?? 'id'),
+            default => $query->count(),
+        };
     }
 
-    private function applyFilters(Builder $query): void
+    /**
+     * Get previous metric value for trend calculation.
+     */
+    protected function getPreviousMetricValue(): mixed
     {
-{{ filters }}
+        $timeframe = $this->config['timeframe'] ?? '7d';
+        $previousDate = now()->sub($this->parseTimeframe($timeframe));
+        
+        $query = $this->buildQuery();
+        $query->where('created_at', '<', $previousDate);
+        
+        return match ($this->config['aggregation'] ?? 'count') {
+            'count' => $query->count(),
+            'sum' => $query->sum($this->config['column'] ?? 'id'),
+            'avg' => $query->avg($this->config['column'] ?? 'id'),
+            'max' => $query->max($this->config['column'] ?? 'id'),
+            'min' => $query->min($this->config['column'] ?? 'id'),
+            default => $query->count(),
+        };
     }
 
-    private function getConfig(): array
+    /**
+     * Calculate trend between current and previous values.
+     */
+    protected function calculateTrend(mixed $current, mixed $previous): array
     {
+        if ($previous == 0) {
+            return [
+                'direction' => 'neutral',
+                'percentage' => 0,
+                'change' => 0,
+            ];
+        }
+        
+        $change = $current - $previous;
+        $percentage = ($change / $previous) * 100;
+        
         return [
-            'type' => '{{ widgetType }}',
-            'title' => '{{ widgetName }}',
+            'direction' => $change > 0 ? 'up' : ($change < 0 ? 'down' : 'neutral'),
+            'percentage' => round(abs($percentage), 2),
+            'change' => $change,
         ];
     }
+
+    /**
+     * Get table columns configuration.
+     */
+    protected function getTableColumns(): array
+    {
+        return $this->config['columns'] ?? [
+            'id' => 'ID',
+            'name' => 'Name',
+            'created_at' => 'Created At',
+        ];
+    }
+
+    /**
+     * Get chart data based on type and timeframe.
+     */
+    protected function getChartData(string $chartType, string $timeframe): array
+    {
+        $query = $this->buildQuery();
+        $period = $this->parseTimeframe($timeframe);
+        
+        // Group by date for time series charts
+        if (in_array($chartType, ['line', 'bar'])) {
+            return $query->selectRaw('DATE(created_at) as date, COUNT(*) as count')
+                ->where('created_at', '>=', now()->sub($period))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'label' => $item->date,
+                        'value' => $item->count,
+                    ];
+                })
+                ->toArray();
+        }
+        
+        // For pie charts, group by a specific column
+        if ($chartType === 'pie') {
+            $groupBy = $this->config['group_by'] ?? 'status';
+            return $query->selectRaw("{$groupBy} as label, COUNT(*) as value")
+                ->groupBy($groupBy)
+                ->get()
+                ->toArray();
+        }
+        
+        return [];
+    }
+
+    /**
+     * Get chart options based on type.
+     */
+    protected function getChartOptions(string $chartType): array
+    {
+        $options = [
+            'responsive' => true,
+            'maintainAspectRatio' => false,
+        ];
+        
+        if (in_array($chartType, ['line', 'bar'])) {
+            $options['scales'] = [
+                'x' => ['type' => 'time'],
+                'y' => ['beginAtZero' => true],
+            ];
+        }
+        
+        return $options;
+    }
+
+    /**
+     * Parse timeframe string to Carbon interval.
+     */
+    protected function parseTimeframe(string $timeframe): \Carbon\CarbonInterval
+    {
+        return match ($timeframe) {
+            '1d' => Carbon::now()->subDay()->diffAsCarbonInterval(Carbon::now()),
+            '7d' => Carbon::now()->subWeek()->diffAsCarbonInterval(Carbon::now()),
+            '30d' => Carbon::now()->subMonth()->diffAsCarbonInterval(Carbon::now()),
+            '90d' => Carbon::now()->subMonths(3)->diffAsCarbonInterval(Carbon::now()),
+            default => Carbon::now()->subWeek()->diffAsCarbonInterval(Carbon::now()),
+        };
+    }
+
+    /**
+     * Clear widget cache.
+     */
+    public function clearCache(): void
+    {
+        Cache::forget($this->cacheKey);
+    }
+
+    /**
+     * Get widget configuration.
+     */
+    public function getConfig(): array
+    {
+        return $this->config;
+    }
+
+    /**
+     * Update widget configuration.
+     */
+    public function updateConfig(array $config): void
+    {
+        $this->config = array_merge($this->config, $config);
+        $this->clearCache();
+    }
+
+    /**
+     * Get widget health status.
+     */
+    public function getHealth(): array
+    {
+        try {
+            $data = $this->getData();
+            
+            return [
+                'status' => isset($data['error']) ? 'error' : 'healthy',
+                'message' => $data['error'] ?? 'Widget is working correctly',
+                'timestamp' => now()->toISOString(),
+                'data_count' => is_array($data) ? count($data) : 0,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'timestamp' => now()->toISOString(),
+            ];
+        }
+    }
+
+    {{ apiIntegration }}
 } 

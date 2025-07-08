@@ -3,26 +3,313 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Services\Dashboard\{{ dashboardName }}Service;
+use App\Services\Dashboard\PluginIntegrationService;
 use Illuminate\Http\JsonResponse;
-{{ widgetImports }}
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Event;
 
 class {{ dashboardName }}Controller extends Controller
 {
+    protected {{ dashboardName }}Service $dashboardService;
+    protected PluginIntegrationService $pluginService;
+
+    public function __construct({{ dashboardName }}Service $dashboardService, PluginIntegrationService $pluginService)
+    {
+        $this->dashboardService = $dashboardService;
+        $this->pluginService = $pluginService;
+    }
+
+    /**
+     * Get dashboard configuration and data.
+     */
     public function index(): JsonResponse
     {
+        // Check permissions
+        {{ permissions }}
+
+        $cacheKey = 'dashboard.{{ dashboardName }}.config';
+        
+        return Cache::remember($cacheKey, 300, function () {
+            return response()->json([
+                'dashboard' => $this->getDashboardConfig(),
+                'widgets' => $this->getWidgetData(),
+                'navigation' => $this->getNavigation(),
+                'theme' => $this->getTheme(),
+                'permissions' => $this->getPermissions(),
+                'api_endpoints' => $this->getApiEndpoints(),
+                'settings' => $this->getSettings(),
+                'metadata' => [
+                    'generated_at' => now()->toISOString(),
+                    'cache_key' => 'dashboard.{{ dashboardName }}.config',
+                    'version' => config('app.version', '1.0.0'),
+                ],
+            ]);
+        });
+    }
+
+    /**
+     * Get widget data for a specific widget.
+     */
+    public function widget(string $widgetName): JsonResponse
+    {
+        // Check permissions
+        {{ permissions }}
+
+        $cacheKey = "dashboard.{{ dashboardName }}.widget.{$widgetName}";
+        
+        return Cache::remember($cacheKey, 60, function () use ($widgetName) {
+            $widgetData = $this->getWidgetData()[$widgetName] ?? null;
+            
+            if (!$widgetData) {
+                return response()->json(['error' => 'Widget not found'], 404);
+            }
+
+            return response()->json([
+                'data' => $widgetData['data'],
+                'config' => $widgetData['config'],
+                'metadata' => [
+                    'widget_name' => $widgetName,
+                    'generated_at' => now()->toISOString(),
+                    'cache_key' => $cacheKey,
+                ],
+            ]);
+        });
+    }
+
+    /**
+     * Get plugin information and status.
+     */
+    public function plugins(): JsonResponse
+    {
+        // Check permissions
+        {{ permissions }}
+
         return response()->json([
-            'dashboard' => config('dashboard.{{ dashboardName }}'),
-            'widgets' => $this->getWidgetData(),
+            'plugins' => $this->pluginService->getActivePlugins(),
+            'stats' => $this->pluginService->getPluginStats(),
+            'extensions' => $this->pluginService->getPluginExtensions(),
         ]);
     }
 
-    private function getWidgetData(): array
+    /**
+     * Refresh dashboard data cache.
+     */
+    public function refresh(): JsonResponse
+    {
+        // Check permissions
+        {{ permissions }}
+
+        $this->dashboardService->refreshData();
+        Cache::tags(['dashboard', '{{ dashboardName }}'])->flush();
+
+        return response()->json([
+            'message' => 'Dashboard data refreshed successfully',
+            'timestamp' => now()->toISOString(),
+        ]);
+    }
+
+    /**
+     * Get dashboard statistics and metrics.
+     */
+    public function stats(): JsonResponse
+    {
+        // Check permissions
+        {{ permissions }}
+
+        return response()->json([
+            'statistics' => $this->dashboardService->getStatistics(),
+            'performance' => $this->getPerformanceMetrics(),
+            'usage' => $this->getUsageMetrics(),
+        ]);
+    }
+
+    {{ widgetMethods }}
+
+    /**
+     * Get navigation items with plugin extensions.
+     */
+    protected function getNavigation(): array
+    {
+        $baseNavigation = [
+            [
+                'name' => 'overview',
+                'title' => 'Overview',
+                'route' => '/dashboard',
+                'icon' => 'home',
+                'permission' => 'view-dashboard'
+            ],
+        ];
+
+        // Merge with plugin navigation
+        $pluginNavigation = $this->pluginService->getPluginNavigation();
+        
+        return array_merge($baseNavigation, $pluginNavigation);
+    }
+
+    /**
+     * Get theme configuration with customization support.
+     */
+    protected function getTheme(): array
     {
         return [
-{{ widgets }}
+            'primary_color' => config('dashboard.theme.primary_color', '#1f2937'),
+            'secondary_color' => config('dashboard.theme.secondary_color', '#6b7280'),
+            'accent_color' => config('dashboard.theme.accent_color', '#3b82f6'),
+            'background_color' => config('dashboard.theme.background_color', '#f9fafb'),
+            'text_color' => config('dashboard.theme.text_color', '#1f2937'),
+            'border_color' => config('dashboard.theme.border_color', '#e5e7eb'),
+            'success_color' => config('dashboard.theme.success_color', '#10b981'),
+            'warning_color' => config('dashboard.theme.warning_color', '#f59e0b'),
+            'error_color' => config('dashboard.theme.error_color', '#ef4444'),
         ];
     }
 
-{{ widgetMethods }}
+    /**
+     * Get permissions with plugin extensions.
+     */
+    protected function getPermissions(): array
+    {
+        $basePermissions = [
+            'view-dashboard',
+            'manage-dashboard',
+        ];
+
+        // Merge with plugin permissions
+        $pluginPermissions = $this->pluginService->getPluginPermissions();
+        
+        return array_merge($basePermissions, $pluginPermissions);
+    }
+
+    /**
+     * Get API endpoints for frontend integration.
+     */
+    protected function getApiEndpoints(): array
+    {
+        return [
+            'dashboard' => '/api/dashboard',
+            'config' => '/api/dashboard/config',
+            'plugins' => '/api/dashboard/plugins',
+            'refresh' => '/api/dashboard/refresh',
+            'stats' => '/api/dashboard/stats',
+            'widgets' => '/api/dashboard/widgets',
+        ];
+    }
+
+    /**
+     * Get dashboard settings.
+     */
+    protected function getSettings(): array
+    {
+        return [
+            'cache_enabled' => config('dashboard.cache.enabled', true),
+            'cache_ttl' => config('dashboard.cache.ttl', 300),
+            'auto_refresh' => config('dashboard.auto_refresh', false),
+            'refresh_interval' => config('dashboard.refresh_interval', 300),
+            'debug_mode' => config('dashboard.debug_mode', false),
+        ];
+    }
+
+    /**
+     * Get dashboard configuration.
+     */
+    protected function getDashboardConfig(): array
+    {
+        return [
+            'name' => '{{ dashboardName }}',
+            'title' => '{{ dashboardTitle }}',
+            'description' => '{{ dashboardDescription }}',
+            'version' => config('app.version', '1.0.0'),
+            'layout' => config('dashboard.layout', 'default'),
+            'theme' => $this->getTheme(),
+            'navigation' => $this->getNavigation(),
+            'permissions' => $this->getPermissions(),
+            'widgets' => $this->getWidgetConfigs(),
+            'plugins' => $this->pluginService->getActivePlugins(),
+            'settings' => $this->getSettings(),
+            'api_endpoints' => $this->getApiEndpoints(),
+            'metadata' => [
+                'generated_at' => now()->toISOString(),
+                'cache_key' => 'dashboard.{{ dashboardName }}.config',
+                'version' => config('app.version', '1.0.0'),
+            ],
+        ];
+    }
+
+    /**
+     * Get widget configurations.
+     */
+    protected function getWidgetConfigs(): array
+    {
+        return [
+            {{ widgets }}
+        ];
+    }
+
+    /**
+     * Get widget data with caching and error handling.
+     */
+    protected function getWidgetData(): array
+    {
+        $widgetData = [];
+        
+        foreach ($this->getWidgetConfigs() as $widgetName => $widgetConfig) {
+            try {
+                $widgetData[$widgetName] = $this->dashboardService->getWidgetData($widgetName, $widgetConfig);
+            } catch (\Exception $e) {
+                Log::error("Error loading widget {$widgetName}: " . $e->getMessage());
+                
+                $widgetData[$widgetName] = [
+                    'data' => [],
+                    'config' => $widgetConfig,
+                    'error' => 'Failed to load widget data',
+                    'metadata' => [
+                        'widget_name' => $widgetName,
+                        'error' => $e->getMessage(),
+                        'generated_at' => now()->toISOString(),
+                    ],
+                ];
+            }
+        }
+        
+        return $widgetData;
+    }
+
+    /**
+     * Get performance metrics.
+     */
+    protected function getPerformanceMetrics(): array
+    {
+        return [
+            'response_time' => microtime(true) - LARAVEL_START,
+            'memory_usage' => memory_get_usage(true),
+            'memory_peak' => memory_get_peak_usage(true),
+            'cache_hit_rate' => $this->getCacheHitRate(),
+        ];
+    }
+
+    /**
+     * Get usage metrics.
+     */
+    protected function getUsageMetrics(): array
+    {
+        return [
+            'total_widgets' => count($this->getWidgetConfigs()),
+            'active_plugins' => count($this->pluginService->getActivePlugins()),
+            'cache_enabled' => config('dashboard.cache.enabled', true),
+            'last_refresh' => now()->toISOString(),
+        ];
+    }
+
+    /**
+     * Get cache hit rate.
+     */
+    protected function getCacheHitRate(): float
+    {
+        // This would be implemented with actual cache statistics
+        return 0.85; // Placeholder
+    }
 } 

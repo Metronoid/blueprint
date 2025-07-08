@@ -1,70 +1,309 @@
 import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { immer } from 'zustand/middleware/immer';
 
-export const useDashboardStore = create((set, get) => ({
-  // Dashboard state
-  dashboard: null,
-  widgets: {
+interface DashboardState {
+    // Dashboard state
+    dashboard: any | null;
+    widgets: Record<string, any>;
+    plugins: any[];
+    pluginData: Record<string, any>;
+    
+    // Loading and error states
+    loading: boolean;
+    error: string | null;
+    
+    // Cache state
+    cache: Record<string, any>;
+    lastRefresh: Date | null;
+    
+    // Actions
+    fetchDashboardData: () => Promise<void>;
+    refreshData: () => Promise<void>;
+    setDashboard: (dashboard: any) => void;
+    setWidgetData: (widgetName: string, data: any) => void;
+    setLoading: (loading: boolean) => void;
+    setError: (error: string | null) => void;
+    clearError: () => void;
+    
+    // Plugin actions
+    setPlugins: (plugins: any[]) => void;
+    setPluginData: (pluginName: string, data: any) => void;
+    
+    // Widget actions
+    refreshWidget: (widgetName: string) => Promise<void>;
+    updateWidgetConfig: (widgetName: string, config: any) => void;
+    
+    // Cache actions
+    setCache: (key: string, value: any) => void;
+    getCache: (key: string) => any;
+    clearCache: () => void;
+}
+
+export const useDashboardStore = create<DashboardState>()(
+    devtools(
+        persist(
+            immer((set, get) => ({
+                // Initial state
+                dashboard: null,
+                widgets: {},
+                plugins: [],
+                pluginData: {},
+                loading: false,
+                error: null,
+                cache: {},
+                lastRefresh: null,
+
+                // Actions
+                fetchDashboardData: async () => {
+                    set((state) => {
+                        state.loading = true;
+                        state.error = null;
+                    });
+
+                    try {
+                        const response = await fetch('/api/dashboard');
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Failed to fetch dashboard data');
+                        }
+
+                        set((state) => {
+                            state.dashboard = data.dashboard;
+                            state.widgets = data.widgets;
+                            state.plugins = data.plugins || [];
+                            state.loading = false;
+                            state.lastRefresh = new Date();
+                        });
+                    } catch (error) {
+                        set((state) => {
+                            state.error = error instanceof Error ? error.message : 'An error occurred';
+                            state.loading = false;
+                        });
+                    }
+                },
+
+                refreshData: async () => {
+                    const { fetchDashboardData, clearCache } = get();
+                    clearCache();
+                    await fetchDashboardData();
+                },
+
+                setDashboard: (dashboard) => {
+                    set((state) => {
+                        state.dashboard = dashboard;
+                    });
+                },
+
+                setWidgetData: (widgetName, data) => {
+                    set((state) => {
+                        state.widgets[widgetName] = data;
+                    });
+                },
+
+                setLoading: (loading) => {
+                    set((state) => {
+                        state.loading = loading;
+                    });
+                },
+
+                setError: (error) => {
+                    set((state) => {
+                        state.error = error;
+                    });
+                },
+
+                clearError: () => {
+                    set((state) => {
+                        state.error = null;
+                    });
+                },
+
+                setPlugins: (plugins) => {
+                    set((state) => {
+                        state.plugins = plugins;
+                    });
+                },
+
+                setPluginData: (pluginName, data) => {
+                    set((state) => {
+                        state.pluginData[pluginName] = data;
+                    });
+                },
+
+                refreshWidget: async (widgetName) => {
+                    const { setWidgetData, setError } = get();
+
+                    try {
+                        const response = await fetch(`/api/dashboard/widgets/${widgetName}/data`);
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(data.error || `Failed to refresh widget ${widgetName}`);
+                        }
+
+                        setWidgetData(widgetName, {
+                            ...data,
+                            loading: false,
+                            error: null,
+                        });
+                    } catch (error) {
+                        setWidgetData(widgetName, {
+                            data: null,
+                            config: {},
+                            loading: false,
+                            error: error instanceof Error ? error.message : 'Widget refresh failed',
+                        });
+                        setError(error instanceof Error ? error.message : 'Widget refresh failed');
+                    }
+                },
+
+                updateWidgetConfig: (widgetName, config) => {
+                    set((state) => {
+                        if (state.widgets[widgetName]) {
+                            state.widgets[widgetName].config = {
+                                ...state.widgets[widgetName].config,
+                                ...config,
+                            };
+                        }
+                    });
+                },
+
+                setCache: (key, value) => {
+                    set((state) => {
+                        state.cache[key] = {
+                            value,
+                            timestamp: Date.now(),
+                        };
+                    });
+                },
+
+                getCache: (key) => {
+                    const { cache } = get();
+                    const cached = cache[key];
+                    
+                    if (!cached) return null;
+                    
+                    // Check if cache is expired (5 minutes)
+                    const isExpired = Date.now() - cached.timestamp > 5 * 60 * 1000;
+                    if (isExpired) {
+                        set((state) => {
+                            delete state.cache[key];
+                        });
+                        return null;
+                    }
+                    
+                    return cached.value;
+                },
+
+                clearCache: () => {
+                    set((state) => {
+                        state.cache = {};
+                    });
+                },
+            })),
+            {
+                name: 'dashboard-store',
+                partialize: (state) => ({
+                    dashboard: state.dashboard,
+                    widgets: state.widgets,
+                    plugins: state.plugins,
+                    pluginData: state.pluginData,
+                    cache: state.cache,
+                    lastRefresh: state.lastRefresh,
+                }),
+            }
+        ),
+        {
+            name: 'dashboard-store',
+        }
+    )
+);
+
+// Selectors for better performance
+export const useDashboard = () => useDashboardStore((state) => state.dashboard);
+export const useWidgets = () => useDashboardStore((state) => state.widgets);
+export const usePlugins = () => useDashboardStore((state) => state.plugins);
+export const useLoading = () => useDashboardStore((state) => state.loading);
+export const useError = () => useDashboardStore((state) => state.error);
+export const useLastRefresh = () => useDashboardStore((state) => state.lastRefresh);
+
+// Widget state selectors
 {{ widgetState }}
-  },
-  loading: false,
-  error: null,
 
-  // Actions
-  setDashboard: (dashboard) => set({ dashboard }),
-  
-  setWidgetData: (widgetName, data) => set((state) => ({
-    widgets: {
-      ...state.widgets,
-      [widgetName]: {
-        ...state.widgets[widgetName],
-        data,
-        loading: false,
-      },
-    },
-  })),
-  
-  setWidgetLoading: (widgetName, loading) => set((state) => ({
-    widgets: {
-      ...state.widgets,
-      [widgetName]: {
-        ...state.widgets[widgetName],
-        loading,
-      },
-    },
-  })),
-  
-  setWidgetError: (widgetName, error) => set((state) => ({
-    widgets: {
-      ...state.widgets,
-      [widgetName]: {
-        ...state.widgets[widgetName],
-        error,
-        loading: false,
-      },
-    },
-  })),
-  
-  fetchWidgetData: async (widgetName) => {
-    const { setWidgetLoading, setWidgetData, setWidgetError } = get();
-    
-    setWidgetLoading(widgetName, true);
-    
-    try {
-      const response = await fetch(`/api/dashboard/widgets/${widgetName}/data`);
-      const data = await response.json();
-      setWidgetData(widgetName, data);
-    } catch (error) {
-      setWidgetError(widgetName, error.message);
-    }
-  },
-  
-  fetchAllWidgetData: async () => {
-    const { widgets, fetchWidgetData } = get();
-    
-    const promises = Object.keys(widgets).map(widgetName => 
-      fetchWidgetData(widgetName)
+// Plugin state selectors
+export const usePluginData = (pluginName: string) => 
+    useDashboardStore((state) => state.pluginData[pluginName]);
+
+export const usePlugin = (pluginName: string) => 
+    useDashboardStore((state) => state.plugins.find(p => p.name === pluginName));
+
+// Cache selectors
+export const useCache = (key: string) => 
+    useDashboardStore((state) => state.getCache(key));
+
+// Action selectors
+export const useDashboardActions = () => {
+    const store = useDashboardStore();
+    return {
+        fetchDashboardData: store.fetchDashboardData,
+        refreshData: store.refreshData,
+        setDashboard: store.setDashboard,
+        setWidgetData: store.setWidgetData,
+        setLoading: store.setLoading,
+        setError: store.setError,
+        clearError: store.clearError,
+        setPlugins: store.setPlugins,
+        setPluginData: store.setPluginData,
+        refreshWidget: store.refreshWidget,
+        updateWidgetConfig: store.updateWidgetConfig,
+        setCache: store.setCache,
+        getCache: store.getCache,
+        clearCache: store.clearCache,
+    };
+};
+
+// Hook for auto-refresh
+export const useAutoRefresh = (interval: number = 5 * 60 * 1000) => {
+    const { fetchDashboardData, loading } = useDashboardStore();
+
+    React.useEffect(() => {
+        const timer = setInterval(() => {
+            if (!loading) {
+                fetchDashboardData();
+            }
+        }, interval);
+
+        return () => clearInterval(timer);
+    }, [fetchDashboardData, loading, interval]);
+};
+
+// Hook for widget data
+export const useWidgetData = (widgetName: string) => {
+    const widget = useDashboardStore((state) => state.widgets[widgetName]);
+    const refreshWidget = useDashboardStore((state) => state.refreshWidget);
+
+    return {
+        data: widget?.data,
+        config: widget?.config,
+        loading: widget?.loading || false,
+        error: widget?.error,
+        refresh: () => refreshWidget(widgetName),
+    };
+};
+
+// Hook for plugin data
+export const usePluginData = (pluginName: string) => {
+    const plugin = useDashboardStore((state) => 
+        state.plugins.find(p => p.name === pluginName)
     );
-    
-    await Promise.all(promises);
-  },
-})); 
+    const pluginData = useDashboardStore((state) => state.pluginData[pluginName]);
+
+    return {
+        plugin,
+        data: pluginData,
+        enabled: plugin?.enabled || false,
+        health: plugin?.health,
+    };
+}; 

@@ -1,0 +1,546 @@
+// Dashboard Types
+export interface Dashboard {
+    name: string;
+    title: string;
+    description: string;
+    version: string;
+    layout: string;
+    theme: DashboardTheme;
+    navigation: NavigationItem[];
+    permissions: string[];
+    widgets: Record<string, WidgetConfig>;
+    plugins: Plugin[];
+    settings: DashboardSettings;
+    api_endpoints: Record<string, string>;
+    metadata: DashboardMetadata;
+}
+
+export interface DashboardTheme {
+    primary_color: string;
+    secondary_color: string;
+    accent_color: string;
+    background_color: string;
+    text_color: string;
+    border_color: string;
+    success_color: string;
+    warning_color: string;
+    error_color: string;
+}
+
+export interface NavigationItem {
+    name: string;
+    title: string;
+    route: string;
+    icon: string;
+    permission?: string;
+    children?: NavigationItem[];
+    badge?: string;
+    disabled?: boolean;
+}
+
+export interface WidgetConfig {
+    type: WidgetType;
+    title: string;
+    description?: string;
+    enabled: boolean;
+    refresh_interval?: number;
+    cache_enabled?: boolean;
+    cache_ttl?: number;
+    format?: string;
+    color?: string;
+    unit?: string;
+    limit?: number;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
+    chart_type?: string;
+    timeframe?: string;
+    columns?: string[];
+    filters?: string[];
+    actions?: WidgetAction[];
+    position?: WidgetPosition;
+    permissions?: string[];
+    api_parameters?: Record<string, any>;
+    api_headers?: Record<string, string>;
+}
+
+export type WidgetType = 'metric' | 'table' | 'chart' | 'list' | 'custom';
+
+export interface WidgetAction {
+    name: string;
+    label: string;
+    type: 'button' | 'link' | 'dropdown';
+    url?: string;
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+    data?: Record<string, any>;
+    permission?: string;
+    icon?: string;
+    variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+}
+
+export interface WidgetPosition {
+    area: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    col_span?: number;
+    row_span?: number;
+}
+
+export interface WidgetData {
+    data: any;
+    config: WidgetConfig;
+    metadata?: WidgetMetadata;
+    error?: string;
+    last_updated?: string;
+}
+
+export interface WidgetMetadata {
+    widget_name: string;
+    widget_type: WidgetType;
+    generated_at: string;
+    cache_key: string;
+    model?: string;
+    response_time?: number;
+    data_source?: string;
+}
+
+// Plugin Types
+export interface Plugin {
+    name: string;
+    description: string;
+    version: string;
+    enabled: boolean;
+    widgets: Record<string, WidgetConfig>;
+    navigation: NavigationItem[];
+    permissions: string[];
+    api_endpoints: Record<string, string>;
+    settings: Record<string, any>;
+    health: PluginHealth;
+    dependencies?: string[];
+    conflicts?: string[];
+    author?: string;
+    homepage?: string;
+    repository?: string;
+}
+
+export interface PluginHealth {
+    status: 'healthy' | 'warning' | 'error' | 'disabled';
+    message?: string;
+    enabled: boolean;
+    version: string;
+    widgets_count: number;
+    navigation_count: number;
+    permissions_count: number;
+    last_check: string;
+}
+
+export interface PluginAction {
+    plugin: string;
+    action: string;
+    data?: Record<string, any>;
+}
+
+// API Types
+export interface ApiResponse<T = any> {
+    success: boolean;
+    data?: T;
+    error?: string;
+    message?: string;
+    timestamp?: string;
+    metadata?: ApiMetadata;
+}
+
+export interface ApiMetadata {
+    version: string;
+    cache_hit?: boolean;
+    response_time?: number;
+    request_id?: string;
+}
+
+export interface DashboardApiResponse {
+    dashboard: Dashboard;
+    widgets: Record<string, WidgetData>;
+    plugins: Plugin[];
+    navigation: NavigationItem[];
+    theme: DashboardTheme;
+    permissions: string[];
+    settings: DashboardSettings;
+    api_endpoints: Record<string, string>;
+    metadata: DashboardMetadata;
+}
+
+export interface WidgetApiResponse {
+    data: any;
+    config: WidgetConfig;
+    count?: number;
+    last_updated?: string;
+    type: WidgetType;
+    metadata: WidgetMetadata;
+}
+
+export interface PluginApiResponse {
+    plugins: Plugin[];
+    stats: PluginStats;
+    extensions: PluginExtensions;
+    health: PluginHealth;
+}
+
+export interface PluginStats {
+    total_plugins: number;
+    enabled_plugins: number;
+    disabled_plugins: number;
+    plugin_health: PluginHealthSummary;
+    last_updated: string;
+    cache_status: CacheStatus;
+}
+
+export interface PluginHealthSummary {
+    total: number;
+    healthy: number;
+    warning: number;
+    error: number;
+    disabled: number;
+}
+
+export interface PluginExtensions {
+    widgets: Record<string, WidgetConfig>;
+    navigation: NavigationItem[];
+    permissions: string[];
+    api_endpoints: Record<string, string>;
+}
+
+export interface CacheStatus {
+    plugin_cache_enabled: boolean;
+    plugin_cache_ttl: number;
+    cache_hit_rate: number;
+    last_cache_clear?: string;
+}
+
+// Store Types
+export interface DashboardState {
+    // Widget data state
+    {{ widgetTypes }}
+    
+    // Dashboard state
+    dashboard: Dashboard | null;
+    
+    // Loading and error states
+    loading: boolean;
+    error: string | null;
+    
+    // Plugin state
+    plugins: Plugin[];
+    pluginData: Record<string, any>;
+    
+    // Cache state
+    cache: Record<string, CacheEntry>;
+    lastRefresh: Date | null;
+    
+    // Actions
+    fetchWidgetData: () => Promise<DashboardApiResponse>;
+    refreshData: () => Promise<void>;
+    setDashboard: (dashboard: Dashboard) => void;
+    setWidgetData: (widgetName: string, data: WidgetData) => void;
+    setLoading: (loading: boolean) => void;
+    setError: (error: string | null) => void;
+    clearError: () => void;
+    
+    // Plugin actions
+    setPlugins: (plugins: Plugin[]) => void;
+    setPluginData: (pluginName: string, data: any) => void;
+    
+    // Widget actions
+    refreshWidget: (widgetName: string) => Promise<void>;
+    updateWidgetConfig: (widgetName: string, config: Partial<WidgetConfig>) => void;
+    
+    // Cache actions
+    setCache: (key: string, value: any) => void;
+    getCache: (key: string) => any;
+    clearCache: () => void;
+}
+
+export interface CacheEntry {
+    value: any;
+    timestamp: number;
+}
+
+// Component Props Types
+export interface DashboardLayoutProps {
+    children: React.ReactNode;
+    dashboard: Dashboard;
+}
+
+export interface DashboardPageProps {
+    dashboard: Dashboard;
+    widgets: Record<string, WidgetData>;
+}
+
+export interface WidgetComponentProps {
+    data: any;
+    config: WidgetConfig;
+    onRefresh?: () => void;
+    onAction?: (action: string, data: any) => void;
+    loading?: boolean;
+    error?: string;
+}
+
+export interface PluginComponentProps {
+    plugin: Plugin;
+    onEnable?: () => void;
+    onDisable?: () => void;
+    onConfigure?: (config: Record<string, any>) => void;
+}
+
+// Event Types
+export interface DashboardEvent {
+    type: 'widget_updated' | 'plugin_enabled' | 'plugin_disabled' | 'theme_changed' | 'data_refreshed';
+    data: any;
+    timestamp: string;
+    source: string;
+}
+
+export interface WidgetEvent {
+    type: 'data_updated' | 'config_changed' | 'error_occurred' | 'refresh_requested';
+    widget_name: string;
+    data: any;
+    timestamp: string;
+}
+
+export interface PluginEvent {
+    type: 'enabled' | 'disabled' | 'installed' | 'uninstalled' | 'configured';
+    plugin_name: string;
+    data: any;
+    timestamp: string;
+}
+
+// Plugin Integration Types
+export interface PluginIntegration {
+    getData: () => Promise<Record<string, Plugin>>;
+    getWidgets: () => Promise<Record<string, WidgetConfig>>;
+    getNavigation: () => Promise<NavigationItem[]>;
+    executeAction: (action: PluginAction) => Promise<ApiResponse>;
+    getHealth: (pluginName: string) => Promise<PluginHealth>;
+}
+
+// Utility Types
+export type DashboardConfig = {
+    title: string;
+    description: string;
+    layout: string;
+    theme: DashboardTheme;
+    permissions: string[];
+    navigation: NavigationItem[];
+    widgets: Record<string, WidgetConfig>;
+    plugins: Plugin[];
+    settings: DashboardSettings;
+};
+
+export interface DashboardSettings {
+    cache_enabled: boolean;
+    cache_ttl: number;
+    real_time_updates: boolean;
+    auto_refresh: boolean;
+    refresh_interval: number;
+    max_widgets_per_row: number;
+    enable_plugin_system: boolean;
+    enable_analytics: boolean;
+    enable_export: boolean;
+    enable_import: boolean;
+}
+
+export interface DashboardMetadata {
+    generated_at: string;
+    cache_key: string;
+    version: string;
+    build_number?: string;
+    environment?: string;
+}
+
+// Hook Types
+export interface UseDashboardReturn {
+    dashboard: Dashboard | null;
+    loading: boolean;
+    error: string | null;
+    refresh: () => Promise<void>;
+    updateConfig: (config: Partial<DashboardConfig>) => void;
+}
+
+export interface UseWidgetReturn {
+    data: WidgetData | null;
+    loading: boolean;
+    error: string | null;
+    refresh: () => Promise<void>;
+    updateConfig: (config: Partial<WidgetConfig>) => void;
+}
+
+export interface UsePluginReturn {
+    plugins: Plugin[];
+    loading: boolean;
+    error: string | null;
+    enablePlugin: (pluginName: string) => Promise<void>;
+    disablePlugin: (pluginName: string) => Promise<void>;
+    getPluginData: (pluginName: string) => any;
+}
+
+// Analytics Types
+export interface DashboardAnalytics {
+    usage: UsageAnalytics;
+    performance: PerformanceAnalytics;
+    widgets: WidgetAnalytics;
+    plugins: PluginAnalytics;
+}
+
+export interface UsageAnalytics {
+    active_users: number;
+    widget_views: number;
+    api_calls: number;
+    page_views: number;
+    session_duration: number;
+}
+
+export interface PerformanceAnalytics {
+    response_time: number;
+    memory_usage: number;
+    database_queries: number;
+    cache_efficiency: number;
+    error_rate: number;
+}
+
+export interface WidgetAnalytics {
+    total_widgets: number;
+    active_widgets: number;
+    widget_views: Record<string, number>;
+    widget_errors: Record<string, number>;
+    popular_widgets: string[];
+}
+
+export interface PluginAnalytics {
+    total_plugins: number;
+    enabled_plugins: number;
+    plugin_usage: Record<string, number>;
+    plugin_errors: Record<string, number>;
+    popular_plugins: string[];
+}
+
+// Health Check Types
+export interface HealthStatus {
+    status: 'healthy' | 'warning' | 'error';
+    message: string;
+    timestamp: string;
+    checks: HealthCheck[];
+}
+
+export interface HealthCheck {
+    name: string;
+    status: 'healthy' | 'warning' | 'error';
+    message: string;
+    response_time?: number;
+    details?: Record<string, any>;
+}
+
+// Export/Import Types
+export interface DashboardExport {
+    dashboard: Dashboard;
+    widgets: Record<string, WidgetData>;
+    plugins: Plugin[];
+    settings: DashboardSettings;
+    theme: DashboardTheme;
+    metadata: DashboardMetadata;
+}
+
+export interface DashboardImport {
+    dashboard: Partial<Dashboard>;
+    widgets?: Record<string, Partial<WidgetData>>;
+    plugins?: Plugin[];
+    settings?: Partial<DashboardSettings>;
+    theme?: Partial<DashboardTheme>;
+    overwrite?: boolean;
+    validate_only?: boolean;
+}
+
+// Form Types
+export interface DashboardFormData {
+    title: string;
+    description: string;
+    layout: string;
+    theme: Partial<DashboardTheme>;
+    settings: Partial<DashboardSettings>;
+}
+
+export interface WidgetFormData {
+    title: string;
+    type: WidgetType;
+    config: Partial<WidgetConfig>;
+    position?: WidgetPosition;
+}
+
+export interface PluginFormData {
+    name: string;
+    enabled: boolean;
+    settings: Record<string, any>;
+}
+
+// Error Types
+export interface DashboardError {
+    code: string;
+    message: string;
+    details?: Record<string, any>;
+    timestamp: string;
+    context?: string;
+}
+
+export interface ValidationError {
+    field: string;
+    message: string;
+    value?: any;
+}
+
+// Cache Types
+export interface CacheConfig {
+    enabled: boolean;
+    ttl: number;
+    prefix: string;
+    driver: 'redis' | 'file' | 'database';
+}
+
+export interface CacheMetrics {
+    hits: number;
+    misses: number;
+    hit_rate: number;
+    size: number;
+    keys: number;
+}
+
+// Notification Types
+export interface DashboardNotification {
+    id: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+    title: string;
+    message: string;
+    timestamp: string;
+    read: boolean;
+    action?: {
+        label: string;
+        url: string;
+    };
+}
+
+// Search Types
+export interface DashboardSearch {
+    query: string;
+    filters: Record<string, any>;
+    sort_by: string;
+    sort_order: 'asc' | 'desc';
+    page: number;
+    per_page: number;
+}
+
+export interface SearchResult {
+    type: 'widget' | 'plugin' | 'setting' | 'page';
+    title: string;
+    description: string;
+    url: string;
+    relevance: number;
+    metadata: Record<string, any>;
+} 

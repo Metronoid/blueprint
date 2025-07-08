@@ -1,5 +1,341 @@
 <?php
 
 return [
-    '{{ dashboardName }}' => {{ dashboardConfig }}
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure the dashboard system settings, caching, and default values.
+    |
+    */
+
+    'title' => env('DASHBOARD_TITLE', 'Dashboard'),
+    'description' => env('DASHBOARD_DESCRIPTION', 'Application Dashboard'),
+    'layout' => env('DASHBOARD_LAYOUT', 'admin'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cache Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure caching settings for dashboard data and widgets.
+    |
+    */
+
+    'cache_enabled' => env('DASHBOARD_CACHE_ENABLED', true),
+    'cache_duration' => env('DASHBOARD_CACHE_DURATION', 300), // 5 minutes
+    'widget_cache_duration' => env('DASHBOARD_WIDGET_CACHE_DURATION', 60), // 1 minute
+    'stats_cache_duration' => env('DASHBOARD_STATS_CACHE_DURATION', 600), // 10 minutes
+
+    /*
+    |--------------------------------------------------------------------------
+    | Real-time Updates
+    |--------------------------------------------------------------------------
+    |
+    | Configure real-time update settings for dashboard widgets.
+    |
+    */
+
+    'real_time_updates' => env('DASHBOARD_REAL_TIME_UPDATES', false),
+    'auto_refresh_interval' => env('DASHBOARD_AUTO_REFRESH_INTERVAL', 300), // 5 minutes
+    'websocket_enabled' => env('DASHBOARD_WEBSOCKET_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Layout Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure dashboard layout and widget positioning.
+    |
+    */
+
+    'max_widgets_per_row' => env('DASHBOARD_MAX_WIDGETS_PER_ROW', 3),
+    'default_grid_columns' => env('DASHBOARD_DEFAULT_GRID_COLUMNS', 12),
+    'responsive_breakpoints' => [
+        'sm' => 640,
+        'md' => 768,
+        'lg' => 1024,
+        'xl' => 1280,
+        '2xl' => 1536,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Theme Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure default theme colors and styling.
+    |
+    */
+
+    'theme' => [
+        'primary_color' => env('DASHBOARD_PRIMARY_COLOR', '#1f2937'),
+        'secondary_color' => env('DASHBOARD_SECONDARY_COLOR', '#6b7280'),
+        'accent_color' => env('DASHBOARD_ACCENT_COLOR', '#3b82f6'),
+        'background_color' => env('DASHBOARD_BACKGROUND_COLOR', '#f9fafb'),
+        'text_color' => env('DASHBOARD_TEXT_COLOR', '#1f2937'),
+        'border_color' => env('DASHBOARD_BORDER_COLOR', '#e5e7eb'),
+        'success_color' => env('DASHBOARD_SUCCESS_COLOR', '#10b981'),
+        'warning_color' => env('DASHBOARD_WARNING_COLOR', '#f59e0b'),
+        'error_color' => env('DASHBOARD_ERROR_COLOR', '#ef4444'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Widget Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure widget types and their default settings.
+    |
+    */
+
+    'widgets' => [
+        'types' => [
+            'metric' => [
+                'name' => 'Metric',
+                'description' => 'Display a single value or metric',
+                'supports' => ['refresh', 'export', 'filtering'],
+                'default_config' => [
+                    'format' => 'number',
+                    'color' => 'blue',
+                    'refresh_interval' => 300,
+                ],
+            ],
+            'table' => [
+                'name' => 'Table',
+                'description' => 'Display tabular data',
+                'supports' => ['refresh', 'export', 'filtering', 'sorting', 'pagination'],
+                'default_config' => [
+                    'limit' => 10,
+                    'sort_by' => 'created_at',
+                    'sort_order' => 'desc',
+                    'refresh_interval' => 300,
+                ],
+            ],
+            'chart' => [
+                'name' => 'Chart',
+                'description' => 'Display chart data',
+                'supports' => ['refresh', 'export', 'filtering'],
+                'default_config' => [
+                    'chart_type' => 'line',
+                    'timeframe' => '7d',
+                    'refresh_interval' => 300,
+                ],
+            ],
+            'list' => [
+                'name' => 'List',
+                'description' => 'Display a list of items',
+                'supports' => ['refresh', 'export', 'filtering'],
+                'default_config' => [
+                    'limit' => 10,
+                    'refresh_interval' => 300,
+                ],
+            ],
+        ],
+        'defaults' => [
+            'refresh_interval' => 300, // 5 minutes
+            'cache_enabled' => true,
+            'filters_enabled' => true,
+            'export_enabled' => true,
+            'sorting_enabled' => true,
+            'pagination_enabled' => true,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Plugin Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure plugin system settings and available plugins.
+    |
+    */
+
+    'plugins' => [
+        'enabled' => env('DASHBOARD_PLUGINS_ENABLED', true),
+        'auto_discover' => env('DASHBOARD_PLUGINS_AUTO_DISCOVER', true),
+        'cache_enabled' => env('DASHBOARD_PLUGINS_CACHE_ENABLED', true),
+        'cache_ttl' => env('DASHBOARD_PLUGINS_CACHE_TTL', 300), // 5 minutes
+        'paths' => [
+            base_path('plugins'),
+            dirname(__DIR__) . '/../plugins',
+        ],
+        'health_check_interval' => env('DASHBOARD_PLUGINS_HEALTH_CHECK_INTERVAL', 3600), // 1 hour
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure API endpoints and authentication.
+    |
+    */
+
+    'api' => [
+        'prefix' => env('DASHBOARD_API_PREFIX', 'api/dashboard'),
+        'middleware' => ['auth', 'verified'],
+        'rate_limiting' => [
+            'enabled' => env('DASHBOARD_API_RATE_LIMITING', true),
+            'max_requests' => env('DASHBOARD_API_MAX_REQUESTS', 60),
+            'decay_minutes' => env('DASHBOARD_API_DECAY_MINUTES', 1),
+        ],
+        'cors' => [
+            'enabled' => env('DASHBOARD_API_CORS_ENABLED', false),
+            'allowed_origins' => env('DASHBOARD_API_CORS_ORIGINS', '*'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Security Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure security settings for dashboard access.
+    |
+    */
+
+    'security' => [
+        'require_authentication' => env('DASHBOARD_REQUIRE_AUTH', true),
+        'require_verification' => env('DASHBOARD_REQUIRE_VERIFICATION', true),
+        'session_timeout' => env('DASHBOARD_SESSION_TIMEOUT', 120), // 2 hours
+        'max_login_attempts' => env('DASHBOARD_MAX_LOGIN_ATTEMPTS', 5),
+        'lockout_duration' => env('DASHBOARD_LOCKOUT_DURATION', 15), // 15 minutes
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Analytics Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure analytics and tracking settings.
+    |
+    */
+
+    'analytics' => [
+        'enabled' => env('DASHBOARD_ANALYTICS_ENABLED', true),
+        'track_usage' => env('DASHBOARD_TRACK_USAGE', true),
+        'track_performance' => env('DASHBOARD_TRACK_PERFORMANCE', true),
+        'track_errors' => env('DASHBOARD_TRACK_ERRORS', true),
+        'retention_days' => env('DASHBOARD_ANALYTICS_RETENTION_DAYS', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Export Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure export settings for dashboard data.
+    |
+    */
+
+    'export' => [
+        'enabled' => env('DASHBOARD_EXPORT_ENABLED', true),
+        'formats' => ['json', 'csv', 'xlsx'],
+        'max_file_size' => env('DASHBOARD_EXPORT_MAX_FILE_SIZE', 10485760), // 10MB
+        'include_metadata' => env('DASHBOARD_EXPORT_INCLUDE_METADATA', true),
+        'temporary_storage' => env('DASHBOARD_EXPORT_TEMP_STORAGE', 'local'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notification Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure notification settings for dashboard events.
+    |
+    */
+
+    'notifications' => [
+        'enabled' => env('DASHBOARD_NOTIFICATIONS_ENABLED', true),
+        'channels' => ['database', 'mail'],
+        'retention_days' => env('DASHBOARD_NOTIFICATIONS_RETENTION_DAYS', 30),
+        'max_per_user' => env('DASHBOARD_NOTIFICATIONS_MAX_PER_USER', 100),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Performance Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure performance optimization settings.
+    |
+    */
+
+    'performance' => [
+        'lazy_loading' => env('DASHBOARD_LAZY_LOADING', true),
+        'widget_preloading' => env('DASHBOARD_WIDGET_PRELOADING', true),
+        'image_optimization' => env('DASHBOARD_IMAGE_OPTIMIZATION', true),
+        'minify_assets' => env('DASHBOARD_MINIFY_ASSETS', true),
+        'database_optimization' => env('DASHBOARD_DATABASE_OPTIMIZATION', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Development Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure development-specific settings.
+    |
+    */
+
+    'development' => [
+        'debug_mode' => env('DASHBOARD_DEBUG_MODE', false),
+        'show_errors' => env('DASHBOARD_SHOW_ERRORS', false),
+        'log_queries' => env('DASHBOARD_LOG_QUERIES', false),
+        'cache_debug' => env('DASHBOARD_CACHE_DEBUG', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Permissions
+    |--------------------------------------------------------------------------
+    |
+    | Configure default permissions for dashboard access.
+    |
+    */
+
+    'permissions' => [
+        'view-dashboard' => 'View dashboard',
+        'manage-dashboard' => 'Manage dashboard',
+        'export-dashboard' => 'Export dashboard data',
+        'manage-widgets' => 'Manage widgets',
+        'manage-plugins' => 'Manage plugins',
+        'view-analytics' => 'View analytics',
+        'manage-settings' => 'Manage settings',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Navigation
+    |--------------------------------------------------------------------------
+    |
+    | Configure default navigation items.
+    |
+    */
+
+    'navigation' => [
+        [
+            'name' => 'overview',
+            'title' => 'Overview',
+            'route' => '/dashboard',
+            'icon' => 'home',
+            'permission' => 'view-dashboard',
+        ],
+        [
+            'name' => 'analytics',
+            'title' => 'Analytics',
+            'route' => '/dashboard/analytics',
+            'icon' => 'chart',
+            'permission' => 'view-analytics',
+        ],
+        [
+            'name' => 'settings',
+            'title' => 'Settings',
+            'route' => '/dashboard/settings',
+            'icon' => 'cog',
+            'permission' => 'manage-settings',
+        ],
+    ],
 ]; 
