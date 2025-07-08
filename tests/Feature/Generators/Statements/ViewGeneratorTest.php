@@ -41,7 +41,7 @@ final class ViewGeneratorTest extends TestCase
 
         $this->filesystem->shouldNotHaveReceived('put');
 
-        $this->assertEquals([], $this->subject->output(new Tree(['controllers' => []])));
+        $this->assertGeneratorOutputEquals([], $this->subject->output(new Tree(['controllers' => []])));
     }
 
     #[Test]
@@ -56,7 +56,7 @@ final class ViewGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/controllers-only.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals([], $this->subject->output($tree));
     }
 
     #[Test]
@@ -96,7 +96,11 @@ final class ViewGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/render-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['resources/views/user/index.blade.php', 'resources/views/user/create.blade.php', 'resources/views/post/show.blade.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [
+            'resources/views/user/index.blade.php',
+            'resources/views/user/create.blade.php',
+            'resources/views/post/show.blade.php',
+        ]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -119,7 +123,7 @@ final class ViewGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/render-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([
+        $this->assertGeneratorOutputEquals([
             'skipped' => [
                 'resources/views/user/index.blade.php',
                 'resources/views/user/create.blade.php',

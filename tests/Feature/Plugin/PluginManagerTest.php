@@ -268,7 +268,7 @@ class PluginManagerTest extends TestCase
         if (!class_exists('TestPlugin\\DiscoveredPlugin')) {
             $code = '
                 namespace TestPlugin {
-                    use Blueprint\Contracts\Plugin;
+                    use Blueprint\\Contracts\\Plugin;
                     class DiscoveredPlugin implements Plugin {
                         public function getName(): string { return "discovered-plugin"; }
                         public function getVersion(): string { return "1.0.0"; }
@@ -279,6 +279,7 @@ class PluginManagerTest extends TestCase
                         public function boot(): void {}
                         public function register(): void {}
                         public function isCompatible(string $blueprintVersion): bool { return true; }
+                        public function getLexers(): array { return []; }
                     }
                 }
             ';

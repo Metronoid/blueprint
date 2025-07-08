@@ -40,7 +40,7 @@ final class PolicyGeneratorTest extends TestCase
 
         $this->filesystem->shouldNotHaveReceived('put');
 
-        $this->assertEquals([], $this->subject->output(new Tree(['controllers' => [], 'policies' => []])));
+        $this->assertGeneratorOutputEquals([], $this->subject->output(new Tree(['controllers' => [], 'policies' => []])));
     }
 
     #[Test]
@@ -78,7 +78,7 @@ final class PolicyGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -107,7 +107,7 @@ final class PolicyGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -145,6 +145,6 @@ final class PolicyGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 }

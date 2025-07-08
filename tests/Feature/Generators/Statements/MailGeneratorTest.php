@@ -44,7 +44,7 @@ final class MailGeneratorTest extends TestCase
 
         $this->filesystem->shouldNotHaveReceived('put');
 
-        $this->assertEquals([], $this->subject->output(new Tree(['controllers' => []])));
+        $this->assertGeneratorOutputEquals([], $this->subject->output(new Tree(['controllers' => []])));
     }
 
     #[Test]
@@ -62,7 +62,7 @@ final class MailGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/render-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals([], $this->subject->output($tree));
     }
 
     #[Test]
@@ -114,7 +114,7 @@ final class MailGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/send-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([
+        $this->assertGeneratorOutputEquals([
             'created' => [
                 'app/Mail/ReviewPost.php',
                 'resources/views/emails/review-post.blade.php',
@@ -143,7 +143,7 @@ final class MailGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/send-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals([], $this->subject->output($tree));
     }
 
     #[Test]
@@ -182,7 +182,7 @@ final class MailGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/readme-example.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([
+        $this->assertGeneratorOutputEquals([
             'created' => [
                 'src/path/Mail/ReviewPost.php',
                 'resources/views/emails/review-post.blade.php',
@@ -227,7 +227,7 @@ final class MailGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/readme-example.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([
+        $this->assertGeneratorOutputEquals([
             'created' => [
                 'src/path/Mail/ReviewPost.php',
                 'resources/views/emails/review-post.blade.php',
@@ -272,7 +272,7 @@ final class MailGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/send-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([
+        $this->assertGeneratorOutputEquals([
             'created' => [
                 'app/Mail/ReviewPost.php',
                 'app/Mail/PublishedPost.php',
@@ -314,7 +314,7 @@ final class MailGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/send-statement-with-view.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([
+        $this->assertGeneratorOutputEquals([
             'created' => [
                 'app/Mail/AddedAdmin.php',
                 'resources/views/emails/admin/added.blade.php',

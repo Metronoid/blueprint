@@ -41,7 +41,7 @@ final class EventGeneratorTest extends TestCase
 
         $this->filesystem->shouldNotHaveReceived('put');
 
-        $this->assertEquals([], $this->subject->output(new Tree(['controllers' => []])));
+        $this->assertGeneratorOutputEquals([], $this->subject->output(new Tree(['controllers' => []])));
     }
 
     #[Test]
@@ -56,7 +56,7 @@ final class EventGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/render-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals([], $this->subject->output($tree));
     }
 
     #[Test]
@@ -89,7 +89,7 @@ final class EventGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/fire-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['app/Events/UserCreated.php', 'app/Events/UserDeleted.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['app/Events/UserCreated.php', 'app/Events/UserDeleted.php']], $this->subject->output($tree));
     }
 
     #[Test]
@@ -109,7 +109,7 @@ final class EventGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/fire-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals([], $this->subject->output($tree));
     }
 
     #[Test]
@@ -138,7 +138,7 @@ final class EventGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/readme-example.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['src/path/Events/NewPost.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['src/path/Events/NewPost.php']], $this->subject->output($tree));
     }
 
     #[Test]
@@ -168,6 +168,6 @@ final class EventGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/readme-example.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['src/path/Events/NewPost.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['src/path/Events/NewPost.php']], $this->subject->output($tree));
     }
 }

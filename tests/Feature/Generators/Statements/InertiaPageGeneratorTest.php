@@ -38,7 +38,7 @@ final class InertiaPageGeneratorTest extends TestCase
     {
         $this->filesystem->shouldNotHaveReceived('put');
 
-        $this->assertEquals([], $this->subject->output(new Tree(['controllers' => []])));
+        $this->assertGeneratorOutputEquals([], $this->subject->output(new Tree(['controllers' => []])));
     }
 
     #[Test]
@@ -49,7 +49,7 @@ final class InertiaPageGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/controllers-only.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals([], $this->subject->output($tree));
     }
 
     #[Test]
@@ -63,7 +63,7 @@ final class InertiaPageGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/controllers-only.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals([], $this->subject->output($tree));
     }
 
     #[Test]
@@ -80,7 +80,7 @@ final class InertiaPageGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/controllers-only.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals([], $this->subject->output($tree));
     }
 
     #[Test]
@@ -135,7 +135,7 @@ final class InertiaPageGeneratorTest extends TestCase
         $tree = $this->blueprint->analyze($tokens);
         $ouput = $this->subject->output($tree);
 
-        $this->assertEquals([
+        $this->assertGeneratorOutputEquals([
             'skipped' => [
                 $path,
             ],

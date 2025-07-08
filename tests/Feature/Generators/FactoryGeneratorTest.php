@@ -42,7 +42,7 @@ final class FactoryGeneratorTest extends TestCase
 
         $this->filesystem->shouldNotHaveReceived('put');
 
-        $this->assertEquals([], $this->subject->output(new Tree(['models' => []])));
+        $this->assertGeneratorOutputEquals([], $this->subject->output(new Tree(['models' => []])));
     }
 
     #[Test]
@@ -63,7 +63,7 @@ final class FactoryGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
         $this->assertSame($this->fixture($factory), $actualContent);
     }
 
@@ -86,7 +86,7 @@ final class FactoryGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/readme-example.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['database/factories/PostFactory.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['database/factories/PostFactory.php']], $this->subject->output($tree));
     }
 
     #[Test]
@@ -112,7 +112,7 @@ final class FactoryGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/nested-models.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([
+        $this->assertGeneratorOutputEquals([
             'created' => [
                 'database/factories/QuestionTypeFactory.php',
                 'database/factories/Appointment/AppointmentTypeFactory.php',
@@ -142,7 +142,7 @@ final class FactoryGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/post.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['database/factories/PostFactory.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['database/factories/PostFactory.php']], $this->subject->output($tree));
     }
 
     #[Test]
@@ -164,7 +164,7 @@ final class FactoryGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/nested-components.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['database/factories/Admin/UserFactory.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['database/factories/Admin/UserFactory.php']], $this->subject->output($tree));
     }
 
     #[Test]
@@ -184,7 +184,7 @@ final class FactoryGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/with-enum.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['database/factories/PostFactory.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['database/factories/PostFactory.php']], $this->subject->output($tree));
     }
 
     public static function modelTreeDataProvider(): array

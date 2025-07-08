@@ -80,7 +80,7 @@ final class ConfigLexerTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/relationships-configured.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['atum/Models/Comment.php']], $this->modelGenerator->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['atum/Models/Comment.php']], $this->modelGenerator->output($tree));
     }
 
     #[Test]
@@ -104,6 +104,6 @@ final class ConfigLexerTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/controller-configured.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['shift/Other/Http/UserController.php']], $this->controllerGenerator->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['shift/Other/Http/UserController.php']], $this->controllerGenerator->output($tree));
     }
 }

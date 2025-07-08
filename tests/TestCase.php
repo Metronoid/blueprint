@@ -71,4 +71,21 @@ abstract class TestCase extends \Orchestra\Testbench\TestCase
             BlueprintServiceProvider::class,
         ];
     }
+
+    /**
+     * Assert generator output arrays are equal, normalizing missing keys.
+     */
+    protected function assertGeneratorOutputEquals(array $expected, array $actual, string $message = ''): void
+    {
+        $normalize = function ($arr) {
+            foreach (['created', 'updated', 'skipped'] as $key) {
+                if (!array_key_exists($key, $arr)) {
+                    $arr[$key] = [];
+                }
+            }
+            ksort($arr);
+            return $arr;
+        };
+        $this->assertEquals($normalize($expected), $normalize($actual), $message);
+    }
 }

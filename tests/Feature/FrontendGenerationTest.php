@@ -9,8 +9,8 @@ use Tests\TestCase;
 
 class FrontendGenerationTest extends TestCase
 {
-    private Blueprint $blueprint;
-    private Filesystem $filesystem;
+    protected $blueprint;
+    protected $filesystem;
 
     protected function setUp(): void
     {

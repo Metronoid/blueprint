@@ -41,7 +41,7 @@ final class PestTestGeneratorTest extends TestCase
 
         $this->filesystem->shouldNotHaveReceived('put');
 
-        $this->assertEquals([], $this->subject->output(new Tree(['controllers' => []])));
+        $this->assertGeneratorOutputEquals([], $this->subject->output(new Tree(['controllers' => []])));
     }
 
     #[Test]
@@ -108,7 +108,7 @@ final class PestTestGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/pascal-case.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => [$certificateControllerTest, $certificateTypeControllerTest]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$certificateControllerTest, $certificateTypeControllerTest]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -148,7 +148,7 @@ final class PestTestGeneratorTest extends TestCase
         unset($tree['models']);
         $tree = new \Blueprint\Tree($tree);
 
-        $this->assertEquals(['created' => ['tests/Feature/Http/Controllers/UserControllerTest.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['tests/Feature/Http/Controllers/UserControllerTest.php']], $this->subject->output($tree));
     }
 
     #[Test]
@@ -182,7 +182,7 @@ final class PestTestGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -217,7 +217,7 @@ final class PestTestGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -266,7 +266,7 @@ final class PestTestGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => [$path], 'updated' => ['tests/TestCase.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path], 'updated' => ['tests/TestCase.php']], $this->subject->output($tree));
     }
 
     public static function controllerTreeDataProvider(): array

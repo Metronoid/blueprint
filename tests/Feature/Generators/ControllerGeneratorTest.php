@@ -41,7 +41,7 @@ final class ControllerGeneratorTest extends TestCase
 
         $this->filesystem->shouldNotHaveReceived('put');
 
-        $this->assertEquals([], $this->subject->output(new Tree(['controllers' => []])));
+        $this->assertGeneratorOutputEquals([], $this->subject->output(new Tree(['controllers' => []])));
     }
 
     #[Test]
@@ -63,7 +63,7 @@ final class ControllerGeneratorTest extends TestCase
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -91,7 +91,7 @@ final class ControllerGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -122,7 +122,7 @@ final class ControllerGeneratorTest extends TestCase
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/pascal-case.yaml'));
         $tree = $this->blueprint->analyze($tokens);
-        $this->assertEquals(['created' => [$certificateController, $certificateTypeController]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$certificateController, $certificateTypeController]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -151,7 +151,7 @@ final class ControllerGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/simple-controller.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['src/path/Other/Http/UserController.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['src/path/Other/Http/UserController.php']], $this->subject->output($tree));
     }
 
     #[Test]
@@ -176,7 +176,7 @@ final class ControllerGeneratorTest extends TestCase
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -201,7 +201,7 @@ final class ControllerGeneratorTest extends TestCase
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -229,7 +229,7 @@ final class ControllerGeneratorTest extends TestCase
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
     #[Test]
@@ -256,7 +256,7 @@ final class ControllerGeneratorTest extends TestCase
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
-        $this->assertEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
     public static function controllerTreeDataProvider(): array

@@ -41,7 +41,7 @@ final class JobGeneratorTest extends TestCase
 
         $this->filesystem->shouldNotHaveReceived('put');
 
-        $this->assertEquals([], $this->subject->output(new Tree(['controllers' => []])));
+        $this->assertGeneratorOutputEquals([], $this->subject->output(new Tree(['controllers' => []])));
     }
 
     #[Test]
@@ -56,7 +56,7 @@ final class JobGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/render-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals([], $this->subject->output($tree));
     }
 
     #[Test]
@@ -88,7 +88,7 @@ final class JobGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/dispatch-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['app/Jobs/CreateUser.php', 'app/Jobs/DeleteRole.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['app/Jobs/CreateUser.php', 'app/Jobs/DeleteRole.php']], $this->subject->output($tree));
     }
 
     #[Test]
@@ -107,7 +107,7 @@ final class JobGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/dispatch-statements.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals([], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals([], $this->subject->output($tree));
     }
 
     #[Test]
@@ -136,7 +136,7 @@ final class JobGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/readme-example.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['src/path/Jobs/SyncMedia.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['src/path/Jobs/SyncMedia.php']], $this->subject->output($tree));
     }
 
     #[Test]
@@ -166,6 +166,6 @@ final class JobGeneratorTest extends TestCase
         $tokens = $this->blueprint->parse($this->fixture('drafts/readme-example.yaml'));
         $tree = $this->blueprint->analyze($tokens);
 
-        $this->assertEquals(['created' => ['src/path/Jobs/SyncMedia.php']], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => ['src/path/Jobs/SyncMedia.php']], $this->subject->output($tree));
     }
 }

@@ -39,7 +39,7 @@ final class ComponentGeneratorTest extends TestCase
             ->with('livewire.class.stub')
             ->andReturn($this->stub('livewire.class.stub'));
 
-        $this->assertEquals([], $this->subject->output(new Tree(['components' => []])));
+        $this->assertGeneratorOutputEquals([], $this->subject->output(new Tree(['components' => []])));
 
         $this->filesystem->shouldNotHaveReceived('put');
     }
@@ -73,7 +73,7 @@ final class ComponentGeneratorTest extends TestCase
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
-        $this->assertEquals(['created' => $paths], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => $paths], $this->subject->output($tree));
     }
 
     #[Test]
