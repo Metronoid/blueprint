@@ -223,7 +223,7 @@ class RecoveryManager
             \Symfony\Component\Yaml\Yaml::parse($fixedContent);
             
             if (!empty($fixes)) {
-                return new RecoveryResult(true, 'Successfully applied YAML syntax fixes', [
+                return new RecoveryResult(true, 'Applied YAML syntax fixes', [
                     'fixes' => $fixes,
                     'fixed_content' => $fixedContent,
                     'suggestion' => 'The YAML file has been automatically fixed. You can now run the command again.'

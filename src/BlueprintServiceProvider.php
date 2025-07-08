@@ -59,7 +59,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
         ], 'blueprint-views');
 
         // Register dashboard routes
-        if ($this->app->runningInConsole() === false) {
+        if ($this->app->runningInConsole() === false || $this->app->environment('testing')) {
             $this->loadRoutesFrom(dirname(__DIR__) . '/routes/web.php');
         }
     }

@@ -48,6 +48,8 @@ abstract class TestCase extends \Orchestra\Testbench\TestCase
         $app['config']->set('blueprint.fake_nullables', true);
         $app['config']->set('blueprint.generate_resource_collection_classes', true);
         $app['config']->set('database.default', 'testing');
+        // Set a random app key for encryption
+        $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
     }
 
     public function fixture(string $path)

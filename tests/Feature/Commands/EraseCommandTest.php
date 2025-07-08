@@ -23,10 +23,7 @@ final class EraseCommandTest extends TestCase
             ->andReturn("created: created_file.php \nupdated: updated_file.php \nother: test.php");
 
         $this->filesystem->expects('delete')->with('created_file.php');
-
-        $this->filesystem->expects('put')
-            ->with('.blueprint', "other: test.php\n");
-
+        $this->filesystem->expects('delete')->with('.blueprint');
         $this->filesystem->expects('exists')->with('app/Models');
 
         $this->artisan('blueprint:erase')
@@ -44,8 +41,7 @@ final class EraseCommandTest extends TestCase
             'created_file1.php',
             'created_file2.php',
         ]);
-
-        $this->filesystem->expects('put')->with('.blueprint', '{  }');
+        $this->filesystem->expects('delete')->with('.blueprint');
         $this->filesystem->expects('exists')->with('app/Models');
 
         $this->artisan('blueprint:erase')
@@ -62,7 +58,7 @@ final class EraseCommandTest extends TestCase
             ->with('.blueprint')
             ->andReturn("updated:\n  -  updated_file1.php\n  -  updated_file2.php");
 
-        $this->filesystem->expects('put')->with('.blueprint', '{  }');
+        $this->filesystem->expects('delete')->with('.blueprint');
         $this->filesystem->expects('exists')->with('app/Models');
 
         $this->artisan('blueprint:erase')
@@ -76,7 +72,7 @@ final class EraseCommandTest extends TestCase
     public function it_calls_the_trace_command(): void
     {
         $this->filesystem->expects('get')->with('.blueprint')->andReturn('other: test.php');
-        $this->filesystem->expects('put')->with('.blueprint', "other: test.php\n");
+        $this->filesystem->expects('delete')->with('.blueprint');
 
         $tracer = $this->spy(Tracer::class);
 

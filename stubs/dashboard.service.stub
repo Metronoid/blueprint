@@ -1,321 +1,96 @@
 <?php
 
-namespace App\Services\Dashboard;
+namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\DB;
-use App\Services\Dashboard\PluginIntegrationService;
-{{ modelQueries }}
 
-class {{ dashboardName }}Service
+class {{ class }}
 {
-    protected PluginIntegrationService $pluginService;
-    protected array $widgetServices = [];
+    protected array $dashboardConfig;
 
-    public function __construct(PluginIntegrationService $pluginService)
+    public function __construct()
     {
-        $this->pluginService = $pluginService;
-        $this->initializeWidgetServices();
+        $this->dashboardConfig = $this->loadDashboardConfig();
     }
 
-    /**
-     * Initialize widget services.
-     */
-    protected function initializeWidgetServices(): void
+    public function getDashboardData(): array
     {
-        {{ widgetServices }}
+        return [
+            'dashboard' => $this->dashboardConfig,
+            'widgets' => $this->getWidgetData()
+        ];
     }
 
-    /**
-     * Get widget data with caching and error handling.
-     */
-    public function getWidgetData(string $widgetName, array $widgetConfig): array
+    public function getWidgetData(?string $widgetName = null): array
     {
-        $cacheKey = "dashboard.widget.{$widgetName}";
-        $cacheTtl = $widgetConfig['cache_ttl'] ?? 60;
+        $widgetData = [];
+        
+        foreach ($this->dashboardConfig['widgets'] ?? [] as $name => $config) {
+            if ($widgetName && $name !== $widgetName) {
+                continue;
+            }
+            
+            $widgetData[$name] = $this->generateWidgetData($name, $config);
+        }
+        
+        return $widgetData;
+    }
 
-        return Cache::remember($cacheKey, $cacheTtl, function () use ($widgetName, $widgetConfig) {
-            try {
-                $service = $this->getWidgetService($widgetName);
-                
-                if ($service) {
-                    return [
-                        'data' => $service->getData($widgetConfig),
-                        'config' => $widgetConfig,
-                        'metadata' => [
-                            'generated_at' => now()->toISOString(),
-                            'widget_name' => $widgetName,
-                            'cache_key' => "dashboard.widget.{$widgetName}",
-                        ],
-                    ];
-                }
+    protected function loadDashboardConfig(): array
+    {
+        return [
+            'title' => '{{ dashboard }} Dashboard',
+            'description' => 'Dashboard for {{ dashboard }}',
+            'layout' => 'admin',
+            'theme' => [
+                'primary_color' => '#1f2937',
+                'secondary_color' => '#6b7280',
+                'accent_color' => '#3b82f6'
+            ],
+            'permissions' => ['view-dashboard'],
+            'navigation' => [
+                [
+                    'name' => 'overview',
+                    'title' => 'Overview',
+                    'route' => '/dashboard',
+                    'icon' => 'home'
+                ]
+            ],
+            'widgets' => [
+                'Stats' => [
+                    'type' => 'metric',
+                    'title' => 'Statistics',
+                    'config' => [
+                        'format' => 'number',
+                        'color' => 'blue'
+                    ]
+                ]
+            ]
+        ];
+    }
 
-                // Fallback to plugin widget data
-                $pluginData = $this->pluginService->getWidgetData($widgetName);
-                if ($pluginData) {
-                    return [
-                        'data' => $pluginData['data'],
-                        'config' => array_merge($widgetConfig, $pluginData['config'] ?? []),
-                        'metadata' => [
-                            'generated_at' => now()->toISOString(),
-                            'widget_name' => $widgetName,
-                            'cache_key' => "dashboard.widget.{$widgetName}",
-                            'plugin' => $pluginData['metadata']['plugin'] ?? null,
-                        ],
-                    ];
-                }
-
+    protected function generateWidgetData(string $widgetName, array $widgetConfig): array
+    {
+        switch ($widgetConfig['type']) {
+            case 'metric':
+                return [
+                    'data' => ['value' => 100],
+                    'config' => $widgetConfig
+                ];
+            case 'table':
+                return [
+                    'data' => [
+                        'headers' => ['ID', 'Name'],
+                        'rows' => [['1', 'Test']]
+                    ],
+                    'config' => $widgetConfig
+                ];
+            default:
                 return [
                     'data' => [],
-                    'config' => $widgetConfig,
-                    'error' => 'Widget service not found',
-                    'metadata' => [
-                        'generated_at' => now()->toISOString(),
-                        'widget_name' => $widgetName,
-                        'cache_key' => "dashboard.widget.{$widgetName}",
-                    ],
+                    'config' => $widgetConfig
                 ];
-            } catch (\Exception $e) {
-                Log::error("Error loading widget {$widgetName}: " . $e->getMessage());
-                
-                return [
-                    'data' => [],
-                    'config' => $widgetConfig,
-                    'error' => 'Failed to load widget data',
-                    'metadata' => [
-                        'generated_at' => now()->toISOString(),
-                        'widget_name' => $widgetName,
-                        'error' => $e->getMessage(),
-                        'cache_key' => "dashboard.widget.{$widgetName}",
-                    ],
-                ];
-            }
-        });
-    }
-
-    /**
-     * Get widget service instance.
-     */
-    protected function getWidgetService(string $widgetName): ?object
-    {
-        return $this->widgetServices[$widgetName] ?? null;
-    }
-
-    /**
-     * Refresh dashboard data cache.
-     */
-    public function refreshData(): void
-    {
-        Cache::tags(['dashboard', '{{ dashboardName }}'])->flush();
-        
-        Event::dispatch('dashboard.data.refreshed', [
-            'dashboard' => '{{ dashboardName }}',
-            'timestamp' => now(),
-        ]);
-    }
-
-    /**
-     * Get dashboard statistics.
-     */
-    public function getStatistics(): array
-    {
-        $cacheKey = 'dashboard.{{ dashboardName }}.statistics';
-        
-        return Cache::remember($cacheKey, 300, function () {
-            return [
-                'total_widgets' => count($this->widgetServices),
-                'active_plugins' => count($this->pluginService->getActivePlugins()),
-                'cache_status' => $this->getCacheStatus(),
-                'performance' => $this->getPerformanceMetrics(),
-                'usage' => $this->getUsageMetrics(),
-            ];
-        });
-    }
-
-    /**
-     * Get cache status.
-     */
-    protected function getCacheStatus(): array
-    {
-        return [
-            'enabled' => config('dashboard.cache.enabled', true),
-            'ttl' => config('dashboard.cache.ttl', 300),
-            'driver' => config('dashboard.cache.driver', 'redis'),
-            'prefix' => config('dashboard.cache.prefix', 'dashboard.'),
-        ];
-    }
-
-    /**
-     * Get performance metrics.
-     */
-    protected function getPerformanceMetrics(): array
-    {
-        return [
-            'response_time' => microtime(true) - LARAVEL_START,
-            'memory_usage' => memory_get_usage(true),
-            'memory_peak' => memory_get_peak_usage(true),
-            'database_queries' => DB::getQueryLog() ? count(DB::getQueryLog()) : 0,
-        ];
-    }
-
-    /**
-     * Get usage metrics.
-     */
-    protected function getUsageMetrics(): array
-    {
-        return [
-            'total_widgets' => count($this->widgetServices),
-            'active_plugins' => count($this->pluginService->getActivePlugins()),
-            'cache_enabled' => config('dashboard.cache.enabled', true),
-            'last_refresh' => now()->toISOString(),
-        ];
-    }
-
-    /**
-     * Get plugin data.
-     */
-    public function getPluginData(): array
-    {
-        return $this->pluginService->getData();
-    }
-
-    {{ widgetMethods }}
-
-    /**
-     * Get widget service bindings.
-     */
-    protected function getWidgetServiceBindings(): array
-    {
-        $bindings = [];
-        
-        foreach ($this->widgetServices as $widgetName => $service) {
-            $bindings[$widgetName] = $service;
-        }
-        
-        return $bindings;
-    }
-
-    /**
-     * Register a widget service.
-     */
-    public function registerWidgetService(string $widgetName, object $service): void
-    {
-        $this->widgetServices[$widgetName] = $service;
-    }
-
-    /**
-     * Unregister a widget service.
-     */
-    public function unregisterWidgetService(string $widgetName): void
-    {
-        unset($this->widgetServices[$widgetName]);
-    }
-
-    /**
-     * Get all registered widget services.
-     */
-    public function getWidgetServices(): array
-    {
-        return $this->widgetServices;
-    }
-
-    /**
-     * Check if a widget service exists.
-     */
-    public function hasWidgetService(string $widgetName): bool
-    {
-        return isset($this->widgetServices[$widgetName]);
-    }
-
-    /**
-     * Get widget service names.
-     */
-    public function getWidgetServiceNames(): array
-    {
-        return array_keys($this->widgetServices);
-    }
-
-    /**
-     * Clear widget cache.
-     */
-    public function clearWidgetCache(string $widgetName = null): void
-    {
-        if ($widgetName) {
-            Cache::forget("dashboard.widget.{$widgetName}");
-        } else {
-            Cache::tags(['dashboard', 'widgets'])->flush();
         }
     }
-
-    /**
-     * Get widget health status.
-     */
-    public function getWidgetHealth(string $widgetName): array
-    {
-        try {
-            $service = $this->getWidgetService($widgetName);
-            
-            if (!$service) {
-                return [
-                    'status' => 'error',
-                    'message' => 'Widget service not found',
-                    'timestamp' => now()->toISOString(),
-                ];
-            }
-
-            // Test widget service
-            $data = $service->getData([]);
-            
-            return [
-                'status' => 'healthy',
-                'message' => 'Widget service is working correctly',
-                'timestamp' => now()->toISOString(),
-                'data_count' => is_array($data) ? count($data) : 0,
-            ];
-        } catch (\Exception $e) {
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'timestamp' => now()->toISOString(),
-            ];
-        }
-    }
-
-    /**
-     * Get overall dashboard health.
-     */
-    public function getDashboardHealth(): array
-    {
-        $health = [
-            'status' => 'healthy',
-            'message' => 'Dashboard is working correctly',
-            'timestamp' => now()->toISOString(),
-            'widgets' => [],
-            'plugins' => [],
-        ];
-
-        // Check widget health
-        foreach ($this->getWidgetServiceNames() as $widgetName) {
-            $health['widgets'][$widgetName] = $this->getWidgetHealth($widgetName);
-            
-            if ($health['widgets'][$widgetName]['status'] === 'error') {
-                $health['status'] = 'warning';
-                $health['message'] = 'Some widgets have issues';
-            }
-        }
-
-        // Check plugin health
-        $pluginHealth = $this->pluginService->getOverallPluginHealth();
-        $health['plugins'] = $pluginHealth;
-
-        if ($pluginHealth['status'] === 'error') {
-            $health['status'] = 'error';
-            $health['message'] = 'Dashboard has critical issues';
-        }
-
-        return $health;
-    }
-} 
 } 

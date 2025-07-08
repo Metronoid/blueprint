@@ -21,7 +21,7 @@ class DashboardController extends Controller
             return $this->getDashboardData($dashboardConfig);
         }
         
-        return view('dashboard.index', [
+        return view('blueprint::dashboard.index', [
             'dashboard' => $dashboardConfig,
             'widgets' => $this->getWidgetData($dashboardConfig)
         ]);
@@ -41,7 +41,13 @@ class DashboardController extends Controller
 
     protected function loadBlueprintDashboard(): array
     {
-        $baseDashboardPath = dirname(__DIR__) . '/../stubs/dashboard.base.yaml';
+        // First try to load from base_path
+        $baseDashboardPath = base_path('dashboard.base.yaml');
+        
+        if (!file_exists($baseDashboardPath)) {
+            // Fallback to stubs directory
+            $baseDashboardPath = dirname(__DIR__) . '/../stubs/dashboard.base.yaml';
+        }
         
         if (!file_exists($baseDashboardPath)) {
             return $this->getDefaultDashboardConfig();
@@ -65,27 +71,31 @@ class DashboardController extends Controller
 
     protected function extendWithPlugins(array &$dashboardConfig): void
     {
-        $pluginManager = app(DashboardPluginManager::class);
-        
-        // Add plugin widgets
-        $pluginWidgets = $pluginManager->getPluginWidgets();
-        $dashboardConfig['widgets'] = array_merge($dashboardConfig['widgets'] ?? [], $pluginWidgets);
-        
-        // Add plugin navigation
-        $pluginNavigation = $pluginManager->getPluginNavigation();
-        $dashboardConfig['navigation'] = array_merge($dashboardConfig['navigation'] ?? [], $pluginNavigation);
-        
-        // Add plugin permissions
-        $pluginPermissions = $pluginManager->getPluginPermissions();
-        $dashboardConfig['permissions'] = array_merge($dashboardConfig['permissions'] ?? [], $pluginPermissions);
-        
-        // Add plugin API endpoints
-        $pluginApiEndpoints = $pluginManager->getPluginApiEndpoints();
-        $dashboardConfig['api'] = array_merge($dashboardConfig['api'] ?? [], $pluginApiEndpoints);
-        
-        // Add plugin settings
-        $pluginSettings = $pluginManager->getPluginSettings();
-        $dashboardConfig['settings'] = array_merge($dashboardConfig['settings'] ?? [], $pluginSettings);
+        try {
+            $pluginManager = app(DashboardPluginManager::class);
+            
+            // Add plugin widgets
+            $pluginWidgets = $pluginManager->getPluginWidgets();
+            $dashboardConfig['widgets'] = array_merge($dashboardConfig['widgets'] ?? [], $pluginWidgets);
+            
+            // Add plugin navigation
+            $pluginNavigation = $pluginManager->getPluginNavigation();
+            $dashboardConfig['navigation'] = array_merge($dashboardConfig['navigation'] ?? [], $pluginNavigation);
+            
+            // Add plugin permissions
+            $pluginPermissions = $pluginManager->getPluginPermissions();
+            $dashboardConfig['permissions'] = array_merge($dashboardConfig['permissions'] ?? [], $pluginPermissions);
+            
+            // Add plugin API endpoints
+            $pluginApiEndpoints = $pluginManager->getPluginApiEndpoints();
+            $dashboardConfig['api'] = array_merge($dashboardConfig['api'] ?? [], $pluginApiEndpoints);
+            
+            // Add plugin settings
+            $pluginSettings = $pluginManager->getPluginSettings();
+            $dashboardConfig['settings'] = array_merge($dashboardConfig['settings'] ?? [], $pluginSettings);
+        } catch (\Exception $e) {
+            // If plugin manager fails, continue without plugins
+        }
     }
 
     protected function getDefaultDashboardConfig(): array
@@ -205,60 +215,38 @@ class DashboardController extends Controller
 
     protected function generateTableData(string $widgetName, array $widgetConfig): array
     {
-        switch ($widgetName) {
-            case 'RecentGenerations':
-                return [
-                    'data' => [
-                        [
-                            'id' => 1,
-                            'type' => 'Model',
-                            'name' => 'User',
-                            'created_at' => now()->subHours(2)->format('Y-m-d H:i:s')
-                        ],
-                        [
-                            'id' => 2,
-                            'type' => 'Controller',
-                            'name' => 'UserController',
-                            'created_at' => now()->subHours(4)->format('Y-m-d H:i:s')
-                        ]
-                    ],
-                    'config' => $widgetConfig
-                ];
-            default:
-                return [
-                    'data' => [],
-                    'config' => $widgetConfig
-                ];
-        }
+        $limit = $widgetConfig['config']['limit'] ?? 10;
+        
+        return [
+            'data' => [
+                'headers' => ['ID', 'Name', 'Created'],
+                'rows' => array_fill(0, min($limit, 5), ['1', 'Test Item', '2024-01-01'])
+            ],
+            'config' => $widgetConfig
+        ];
     }
 
     protected function generateListData(string $widgetName, array $widgetConfig): array
     {
-        switch ($widgetName) {
-            case 'PluginOverview':
-                return [
-                    'data' => [
-                        ['name' => 'Blueprint Auditing', 'status' => 'Active'],
-                        ['name' => 'Blueprint Constraints', 'status' => 'Active'],
-                        ['name' => 'Blueprint StateMachine', 'status' => 'Active']
-                    ],
-                    'config' => $widgetConfig
-                ];
-            default:
-                return [
-                    'data' => [],
-                    'config' => $widgetConfig
-                ];
-        }
+        $limit = $widgetConfig['config']['limit'] ?? 10;
+        
+        return [
+            'data' => array_fill(0, min($limit, 5), 'Test Item'),
+            'config' => $widgetConfig
+        ];
     }
 
     protected function generateChartData(string $widgetName, array $widgetConfig): array
     {
         return [
             'data' => [
-                ['date' => '2024-01-01', 'value' => 10],
-                ['date' => '2024-01-02', 'value' => 15],
-                ['date' => '2024-01-03', 'value' => 12]
+                'labels' => ['Jan', 'Feb', 'Mar'],
+                'datasets' => [
+                    [
+                        'label' => 'Data',
+                        'data' => [10, 20, 30]
+                    ]
+                ]
             ],
             'config' => $widgetConfig
         ];

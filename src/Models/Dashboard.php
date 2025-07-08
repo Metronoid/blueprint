@@ -55,9 +55,40 @@ class Dashboard
         $this->widgets = $widgets;
     }
 
-    public function addWidget(DashboardWidget $widget): void
+    public function addWidget(string $name, $widget): void
     {
-        $this->widgets[] = $widget;
+        if (is_array($widget)) {
+            $dashboardWidget = new DashboardWidget($name, $widget['type'] ?? 'metric');
+            if (isset($widget['title'])) {
+                $dashboardWidget->setTitle($widget['title']);
+            }
+            if (isset($widget['config'])) {
+                $dashboardWidget->setConfig($widget['config']);
+            }
+            if (isset($widget['data'])) {
+                $dashboardWidget->setData($widget['data']);
+            }
+            if (isset($widget['position'])) {
+                $dashboardWidget->setPosition($widget['position']);
+            }
+            if (isset($widget['permissions'])) {
+                $dashboardWidget->setPermissions($widget['permissions']);
+            }
+            if (isset($widget['model'])) {
+                $dashboardWidget->setModel($widget['model']);
+            }
+            if (isset($widget['columns'])) {
+                $dashboardWidget->setColumns($widget['columns']);
+            }
+            if (isset($widget['filters'])) {
+                $dashboardWidget->setFilters($widget['filters']);
+            }
+            if (isset($widget['actions'])) {
+                $dashboardWidget->setActions($widget['actions']);
+            }
+            $widget = $dashboardWidget;
+        }
+        $this->widgets[$name] = $widget;
     }
 
     public function navigation(): array

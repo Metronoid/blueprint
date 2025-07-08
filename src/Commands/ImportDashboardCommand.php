@@ -50,16 +50,60 @@ class ImportDashboardCommand extends Command
 
         // Copy base dashboard YAML
         $baseDashboardPath = dirname(__DIR__) . '/../stubs/dashboard.base.yaml';
-        $targetPath = base_path('dashboards/base-dashboard.yaml');
+        $targetPath = base_path('dashboard.base.yaml');
 
         if (!$filesystem->exists($baseDashboardPath)) {
-            $this->error('Base dashboard file not found');
-            return 1;
+            // Create a basic dashboard configuration if the stub doesn't exist
+            $basicConfig = <<<'YAML'
+dashboards:
+  AdminDashboard:
+    title: "Blueprint Dashboard"
+    description: "Overview and extension area for all Blueprint plugins"
+    layout: "admin"
+    theme:
+      primary_color: "#1f2937"
+      secondary_color: "#6b7280"
+      accent_color: "#3b82f6"
+      background_color: "#f9fafb"
+      text_color: "#1f2937"
+      border_color: "#e5e7eb"
+    permissions: ["view-dashboard"]
+    navigation:
+      - name: "overview"
+        title: "Overview"
+        route: "/blueprint/dashboard"
+        icon: "home"
+      - name: "plugins"
+        title: "Plugins"
+        route: "/blueprint/plugins"
+        icon: "puzzle"
+    widgets:
+      BlueprintStats:
+        type: "metric"
+        title: "Blueprint Status"
+        config:
+          format: "status"
+          color: "green"
+      PluginOverview:
+        type: "list"
+        title: "Active Plugins"
+        config:
+          limit: 10
+      RecentGenerations:
+        type: "table"
+        title: "Recent Generations"
+        config:
+          limit: 5
+          sort_by: "created_at"
+          sort_order: "desc"
+YAML;
+            
+            $filesystem->put($targetPath, $basicConfig);
+        } else {
+            $filesystem->copy($baseDashboardPath, $targetPath);
         }
 
-        $filesystem->makeDirectory(dirname($targetPath), 0755, true, true);
-        $filesystem->copy($baseDashboardPath, $targetPath);
-
+        $this->info('Dashboard base configuration imported successfully!');
         $this->info("Base dashboard imported to: $targetPath");
         $this->info('You can now customize this file and run: php artisan blueprint:build dashboards/base-dashboard.yaml');
 

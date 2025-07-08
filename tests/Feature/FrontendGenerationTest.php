@@ -15,9 +15,16 @@ class FrontendGenerationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
+        
+        // Use real filesystem for frontend generation tests
+        $this->filesystem = new \Illuminate\Filesystem\Filesystem();
+        
+        // Bind the filesystem to the container so Blueprint uses the same instance
+        $this->app->singleton('files', function () {
+            return $this->filesystem;
+        });
+        
         $this->blueprint = app(Blueprint::class);
-        $this->filesystem = app(Filesystem::class);
     }
 
     public function test_generates_react_component()
@@ -163,12 +170,9 @@ frontend:
     framework: react
     type: component
     dependencies:
-      - name: useState
-        from: react
-      - name: useEffect
-        from: react
-      - name: axios
-        from: axios
+      useState: react
+      useEffect: react
+      axios: axios
 YAML;
 
         $tokens = $this->blueprint->parse($yaml);

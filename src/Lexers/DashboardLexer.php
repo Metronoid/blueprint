@@ -22,7 +22,12 @@ class DashboardLexer implements Lexer
         }
 
         foreach ($tokens['dashboards'] as $name => $definition) {
-            $registry['dashboards'][] = $this->analyzeDashboardDefinition($name, $definition);
+            if (is_array($definition)) {
+                $registry['dashboards'][] = $this->analyzeDashboardDefinition($name, $definition);
+            } else {
+                // Handle null or invalid definitions by creating a basic dashboard
+                $registry['dashboards'][] = $this->analyzeDashboardDefinition($name, []);
+            }
         }
 
         return $registry;
@@ -68,11 +73,12 @@ class DashboardLexer implements Lexer
         }
 
         if (isset($definition['widgets'])) {
-            $widgets = [];
             foreach ($definition['widgets'] as $widgetName => $widgetDefinition) {
-                $widgets[] = $this->analyzeWidgetDefinition($widgetName, $widgetDefinition);
+                if (is_array($widgetDefinition)) {
+                    $widget = $this->analyzeWidgetDefinition($widgetName, $widgetDefinition);
+                    $dashboard->addWidget($widgetName, $widget);
+                }
             }
-            $dashboard->setWidgets($widgets);
         }
 
         return $dashboard;

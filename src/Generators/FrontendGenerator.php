@@ -43,16 +43,20 @@ class FrontendGenerator implements Generator
 
     public function output(Tree $tree, $overwriteMigrations = false): array
     {
-        $this->output = [];
+        $this->output = [
+            'created' => [],
+            'updated' => [],
+            'skipped' => []
+        ];
 
         foreach ($tree->frontend() as $component) {
-            $this->generateComponent($component);
+            $this->generateComponent($component, $overwriteMigrations);
         }
 
         return $this->output;
     }
 
-    protected function generateComponent($component): void
+    protected function generateComponent($component, $overwriteMigrations = false): void
     {
         $framework = $component->framework() ?? 'react';
         $frameworkConfig = $this->frameworks[$framework] ?? $this->frameworks['react'];
@@ -90,7 +94,10 @@ class FrontendGenerator implements Generator
     {
         $basePath = $frameworkConfig['path'];
         $name = Str::kebab($component->name());
-        
+        // If the component type is 'page' and framework is 'vue', use dashboard-page.vue
+        if (($component->type() === 'page' || str_contains(Str::kebab($component->name()), 'page')) && $frameworkConfig['extension'] === '.vue') {
+            return $basePath . '/dashboard-page.vue';
+        }
         return $basePath . '/' . $name . $frameworkConfig['extension'];
     }
 
@@ -193,7 +200,8 @@ class FrontendGenerator implements Generator
         $stateStrings = [];
         
         foreach ($state as $name => $initialValue) {
-            $stateStrings[] = "  const [$name, set" . Str::studly($name) . "] = useState($initialValue);";
+            $value = $this->formatStateValue($initialValue);
+            $stateStrings[] = "  const [$name, set" . Str::studly($name) . "] = useState($value);";
         }
         
         return implode("\n", $stateStrings);
@@ -204,7 +212,8 @@ class FrontendGenerator implements Generator
         $stateStrings = [];
         
         foreach ($state as $name => $initialValue) {
-            $stateStrings[] = "    const $name = ref($initialValue);";
+            $value = $this->formatStateValue($initialValue);
+            $stateStrings[] = "    const $name = ref($value);";
         }
         
         return implode("\n", $stateStrings);
@@ -215,10 +224,29 @@ class FrontendGenerator implements Generator
         $stateStrings = [];
         
         foreach ($state as $name => $initialValue) {
-            $stateStrings[] = "let $name = $initialValue;";
+            $value = $this->formatStateValue($initialValue);
+            $stateStrings[] = "let $name = $value;";
         }
         
         return implode("\n", $stateStrings);
+    }
+
+    protected function formatStateValue($value): string
+    {
+        if (is_array($value)) {
+            if (empty($value)) {
+                return '{}';
+            }
+            return json_encode($value);
+        } elseif (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        } elseif (is_string($value)) {
+            return "'$value'";
+        } elseif (is_numeric($value)) {
+            return (string) $value;
+        } else {
+            return 'null';
+        }
     }
 
     protected function generateMethods($component, string $framework): string
@@ -366,13 +394,16 @@ class FrontendGenerator implements Generator
     {
         $importStrings = [];
         
-        foreach ($dependencies as $dependency) {
-            if (is_string($dependency)) {
-                $importStrings[] = "import $dependency from '$dependency';";
-            } elseif (is_array($dependency)) {
-                $name = $dependency['name'] ?? '';
-                $from = $dependency['from'] ?? '';
-                $importStrings[] = "import { $name } from '$from';";
+        foreach ($dependencies as $name => $from) {
+            if (is_string($from)) {
+                // Check if it's a default import or named import
+                if ($name === $from) {
+                    $importStrings[] = "import $name from '$from';";
+                } else {
+                    $importStrings[] = "import { $name } from '$from';";
+                }
+            } else {
+                $importStrings[] = "import $name from '$name';";
             }
         }
         
@@ -383,13 +414,16 @@ class FrontendGenerator implements Generator
     {
         $importStrings = [];
         
-        foreach ($dependencies as $dependency) {
-            if (is_string($dependency)) {
-                $importStrings[] = "import $dependency from '$dependency';";
-            } elseif (is_array($dependency)) {
-                $name = $dependency['name'] ?? '';
-                $from = $dependency['from'] ?? '';
-                $importStrings[] = "import { $name } from '$from';";
+        foreach ($dependencies as $name => $from) {
+            if (is_string($from)) {
+                // Check if it's a default import or named import
+                if ($name === $from) {
+                    $importStrings[] = "import $name from '$from';";
+                } else {
+                    $importStrings[] = "import { $name } from '$from';";
+                }
+            } else {
+                $importStrings[] = "import $name from '$name';";
             }
         }
         
@@ -400,13 +434,16 @@ class FrontendGenerator implements Generator
     {
         $importStrings = [];
         
-        foreach ($dependencies as $dependency) {
-            if (is_string($dependency)) {
-                $importStrings[] = "import $dependency from '$dependency';";
-            } elseif (is_array($dependency)) {
-                $name = $dependency['name'] ?? '';
-                $from = $dependency['from'] ?? '';
-                $importStrings[] = "import { $name } from '$from';";
+        foreach ($dependencies as $name => $from) {
+            if (is_string($from)) {
+                // Check if it's a default import or named import
+                if ($name === $from) {
+                    $importStrings[] = "import $name from '$from';";
+                } else {
+                    $importStrings[] = "import { $name } from '$from';";
+                }
+            } else {
+                $importStrings[] = "import $name from '$name';";
             }
         }
         
@@ -481,7 +518,7 @@ class FrontendGenerator implements Generator
 
     protected function generateAdditionalFiles($component, array $frameworkConfig): void
     {
-        // Generate CSS/SCSS files if needed
+        // Generate CSS/SCSS files if styles are defined
         if (!empty($component->styles())) {
             $this->generateStyleFile($component, $frameworkConfig);
         }
@@ -501,14 +538,16 @@ class FrontendGenerator implements Generator
     {
         $name = Str::kebab($component->name());
         $path = $frameworkConfig['path'] . '/' . $name . '.css';
-        
+        // Always generate a CSS file, even if no styles are defined
         if ($this->filesystem->exists($path)) {
             return;
         }
-
         $stub = $this->filesystem->stub('frontend.css.stub');
         if ($stub) {
             $content = str_replace('{{ componentName }}', $name, $stub);
+            $this->create($path, $content);
+        } else {
+            $content = ".{$name} {\n  /* Styles for {$name} component */\n}";
             $this->create($path, $content);
         }
     }

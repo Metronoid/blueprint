@@ -87,6 +87,11 @@ class Component implements BlueprintModel
         $this->methods[$name] = $statements;
     }
 
+    public function setMethods(array $methods): void
+    {
+        $this->methods = $methods;
+    }
+
     public function properties(): array
     {
         return $this->properties;
