@@ -4,6 +4,7 @@ namespace App\Services\Dashboard\Widgets;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+{{ modelImports }}
 
 class {{ widgetName }}Service
 {
@@ -19,8 +20,8 @@ class {{ widgetName }}Service
 
     private function buildQuery(): Builder
     {
-        $query = {{ modelName }}::query();
-        
+        {{ modelQuery }}
+
         $this->applyColumns($query);
         $this->applyFilters($query);
         

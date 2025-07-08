@@ -48,6 +48,13 @@ class Blueprint
         try {
             $content = str_replace(["\r\n", "\r"], "\n", $content);
 
+            // Check if this is a dashboard file and disable strip_dashes for dashboard files
+            $isDashboardFile = false;
+            if ($filePath && (strpos($filePath, 'dashboard') !== false || strpos($content, 'dashboards:') !== false)) {
+                $isDashboardFile = true;
+                $strip_dashes = false; // Don't strip dashes for dashboard files
+            }
+
             if ($strip_dashes) {
                 $content = preg_replace('/^(\s*)-\s*/m', '\1', $content);
             }
@@ -95,7 +102,39 @@ class Blueprint
             if (!$filePath) {
                 throw $e;
             }
-            throw ParsingException::invalidYaml($filePath, $e->getMessage());
+            
+            // Try to provide more specific error information
+            $errorMessage = $e->getMessage();
+            $lineNumber = null;
+            
+            // Extract line number from Symfony YAML error messages
+            if (preg_match('/at line (\d+)/', $errorMessage, $matches)) {
+                $lineNumber = (int) $matches[1];
+            }
+            
+            // Create enhanced context for the error
+            $context = [
+                'file' => $filePath,
+                'line_number' => $lineNumber,
+                'yaml_content' => $content,
+                'error_message' => $errorMessage,
+                'parse_exception' => $e
+            ];
+            
+            // Add context lines around the error
+            if ($lineNumber) {
+                $lines = explode("\n", $content);
+                $startLine = max(1, $lineNumber - 3);
+                $endLine = min(count($lines), $lineNumber + 3);
+                
+                $contextLines = [];
+                for ($i = $startLine; $i <= $endLine; $i++) {
+                    $contextLines[$i] = $lines[$i - 1] ?? '';
+                }
+                $context['context_lines'] = $contextLines;
+            }
+            
+            throw ParsingException::invalidYaml($filePath, $errorMessage);
         } catch (ParsingException $e) {
             throw $e;
         } catch (\Exception $e) {
@@ -305,7 +344,9 @@ class Blueprint
     {
         // Skip validation for simple data structures that don't look like Blueprint files
         $blueprintSections = ['models', 'controllers', 'seeders', 'components'];
+        $dashboardSections = ['dashboards'];
         $hasBlueprintSections = false;
+        $hasDashboardSections = false;
         
         foreach ($blueprintSections as $section) {
             if (isset($parsed[$section])) {
@@ -314,8 +355,20 @@ class Blueprint
             }
         }
         
-        // If this doesn't look like a Blueprint file, skip validation
-        if (!$hasBlueprintSections) {
+        foreach ($dashboardSections as $section) {
+            if (isset($parsed[$section])) {
+                $hasDashboardSections = true;
+                break;
+            }
+        }
+        
+        // If this doesn't look like a Blueprint file or dashboard file, skip validation
+        if (!$hasBlueprintSections && !$hasDashboardSections) {
+            return;
+        }
+
+        // For dashboard files, skip traditional Blueprint validation
+        if ($hasDashboardSections) {
             return;
         }
 

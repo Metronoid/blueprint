@@ -144,41 +144,131 @@ class RecoveryManager
     private function recoverYamlSyntax(ParsingException $exception): RecoveryResult
     {
         $context = $exception->getContext();
+        $filePath = $exception->getFilePath();
         
-        if (!isset($context['yaml_content'])) {
+        // Try to read the actual file content for better analysis
+        $yamlContent = null;
+        if ($filePath && file_exists($filePath)) {
+            $yamlContent = file_get_contents($filePath);
+        } elseif (isset($context['yaml_content'])) {
+            $yamlContent = $context['yaml_content'];
+        }
+        
+        if (!$yamlContent) {
             return new RecoveryResult(false, 'No YAML content to fix');
         }
 
-        $yamlContent = $context['yaml_content'];
         $fixes = [];
+        $fixedContent = $yamlContent;
 
-        // Common YAML syntax fixes
+        // Enhanced YAML syntax fixes for dashboard files
         $commonFixes = [
             // Fix missing spaces after colons
             '/(\w+):(\S)/' => '$1: $2',
             // Fix incorrect indentation (basic)
             '/^(\s*)-(\S)/' => '$1- $2',
             // Fix missing quotes around strings with special characters
-            '/:\s*([^"\'\s][^:\n]*[!@#$%^&*()][^:\n]*)$/' => ': "$1"',
+            '/:\s*([^"\'\s][^:\n]*[!@#$%^&*()][^:\n]*)$/m' => ': "$1"',
+            // Fix missing quotes around strings with spaces
+            '/:\s*([^"\'\s][^:\n]*\s[^:\n]*)$/m' => ': "$1"',
+            // Fix trailing spaces
+            '/[ \t]+$/m' => '',
+            // Fix mixed indentation (tabs to spaces)
+            '/^\t+/m' => function($matches) {
+                return str_repeat('  ', strlen($matches[0]));
+            },
+            // Fix missing colons after keys
+            '/^(\s*)(\w+)(\s+)([^:])/m' => '$1$2:$3$4',
+            // Fix list items without proper indentation
+            '/^(\s*)-(\s*)([^-\s])/m' => '$1- $2$3',
         ];
 
-        $fixedContent = $yamlContent;
         foreach ($commonFixes as $pattern => $replacement) {
-            $newContent = preg_replace($pattern, $replacement, $fixedContent);
+            if (is_callable($replacement)) {
+                $newContent = preg_replace_callback($pattern, $replacement, $fixedContent);
+            } else {
+                $newContent = preg_replace($pattern, $replacement, $fixedContent);
+            }
+            
             if ($newContent !== $fixedContent) {
                 $fixes[] = "Applied fix: " . $pattern;
                 $fixedContent = $newContent;
             }
         }
 
-        if (!empty($fixes)) {
-            return new RecoveryResult(true, 'Applied YAML syntax fixes', [
+        // Specific fixes for dashboard YAML structure
+        $dashboardFixes = [
+            // Fix navigation items structure
+            '/^(\s*)navigation:\s*$/m' => '$1navigation:',
+            // Fix widget definitions
+            '/^(\s*)(\w+):\s*$/m' => '$1$2:',
+            // Fix theme color values
+            '/:\s*#([0-9a-fA-F]{6})\s*$/m' => ': "#$1"',
+            // Fix boolean values
+            '/:\s*(true|false)\s*$/m' => ': $1',
+            // Fix numeric values
+            '/:\s*(\d+)\s*$/m' => ': $1',
+        ];
+
+        foreach ($dashboardFixes as $pattern => $replacement) {
+            $newContent = preg_replace($pattern, $replacement, $fixedContent);
+            if ($newContent !== $fixedContent) {
+                $fixes[] = "Applied dashboard fix: " . $pattern;
+                $fixedContent = $newContent;
+            }
+        }
+
+        // Try to validate the fixed content
+        try {
+            \Symfony\Component\Yaml\Yaml::parse($fixedContent);
+            
+            if (!empty($fixes)) {
+                return new RecoveryResult(true, 'Successfully applied YAML syntax fixes', [
+                    'fixes' => $fixes,
+                    'fixed_content' => $fixedContent,
+                    'suggestion' => 'The YAML file has been automatically fixed. You can now run the command again.'
+                ]);
+            }
+        } catch (\Exception $e) {
+            // If the fixed content still doesn't parse, provide more specific suggestions
+            $suggestions = $this->analyzeYamlError($fixedContent, $e->getMessage());
+            
+            return new RecoveryResult(false, 'YAML syntax fixes applied but file still invalid', [
                 'fixes' => $fixes,
-                'fixed_content' => $fixedContent
+                'fixed_content' => $fixedContent,
+                'remaining_issues' => $suggestions
             ]);
         }
 
         return new RecoveryResult(false, 'No automatic YAML fixes available');
+    }
+
+    private function analyzeYamlError(string $content, string $errorMessage): array
+    {
+        $suggestions = [];
+        
+        // Analyze common YAML issues
+        if (strpos($errorMessage, 'indentation') !== false) {
+            $suggestions[] = 'Check indentation consistency (use spaces, not tabs)';
+        }
+        
+        if (strpos($errorMessage, 'quotes') !== false) {
+            $suggestions[] = 'Ensure strings with special characters are properly quoted';
+        }
+        
+        if (strpos($errorMessage, 'colon') !== false) {
+            $suggestions[] = 'Check for missing colons after keys';
+        }
+        
+        if (strpos($errorMessage, 'list') !== false) {
+            $suggestions[] = 'Verify list items are properly formatted with dashes';
+        }
+        
+        // Count lines to help identify the problematic area
+        $lines = explode("\n", $content);
+        $suggestions[] = 'Review the YAML structure around the error location';
+        
+        return $suggestions;
     }
 
     private function recoverMissingDirectory(GenerationException $exception): RecoveryResult

@@ -20,67 +20,82 @@ class DashboardGenerator implements Generator
 
     public function output(Tree $tree, $overwriteMigrations = false): array
     {
-        $this->output = [];
+        $dashboardNames = array_map(fn($d) => $d->name(), $tree->dashboards());
+        $msg = '[DashboardGenerator] Dashboards in tree: ' . json_encode($dashboardNames);
+        if (function_exists('info')) {
+            info($msg);
+        } else if (function_exists('error_log')) {
+            error_log($msg);
+        }
+        file_put_contents('/tmp/dashboardgen.log', $msg . "\n", FILE_APPEND);
+        $this->output = [
+            'created' => [],
+            'updated' => [],
+            'skipped' => []
+        ];
 
         foreach ($tree->dashboards() as $dashboard) {
-            $this->generateDashboard($dashboard, $tree);
+            $this->generateDashboard($dashboard, $tree, $overwriteMigrations);
         }
 
-        return $this->output;
+        // Ensure output is always top-level keys
+        return [
+            'created' => $this->output['created'],
+            'updated' => $this->output['updated'],
+            'skipped' => $this->output['skipped'],
+        ];
     }
 
-    protected function generateDashboard($dashboard, Tree $tree): void
+    protected function generateDashboard($dashboard, Tree $tree, $overwriteMigrations = false): void
     {
         // Generate backend components
-        $this->generateBackendComponents($dashboard, $tree);
+        $this->generateBackendComponents($dashboard, $tree, $overwriteMigrations);
         
         // Generate frontend components
-        $this->generateFrontendComponents($dashboard, $tree);
+        $this->generateFrontendComponents($dashboard, $tree, $overwriteMigrations);
         
         // Generate API routes
-        $this->generateApiRoutes($dashboard);
+        $this->generateApiRoutes($dashboard, $overwriteMigrations);
         
         // Generate dashboard configuration
-        $this->generateDashboardConfig($dashboard);
+        $this->generateDashboardConfig($dashboard, $overwriteMigrations);
     }
 
-    protected function generateBackendComponents($dashboard, Tree $tree): void
+    protected function generateBackendComponents($dashboard, Tree $tree, $overwriteMigrations = false): void
     {
         // Generate Dashboard Controller
-        $this->generateDashboardController($dashboard);
-        
+        $this->generateDashboardController($dashboard, $overwriteMigrations);
+        // Register middleware alias for Laravel 12+
+        $this->registerDashboardAccessMiddlewareAlias();
         // Generate Dashboard Service
-        $this->generateDashboardService($dashboard, $tree);
-        
+        $this->generateDashboardService($dashboard, $tree, $overwriteMigrations);
         // Generate Widget Services
-        $this->generateWidgetServices($dashboard, $tree);
-        
+        $this->generateWidgetServices($dashboard, $tree, $overwriteMigrations);
         // Generate Dashboard Middleware
-        $this->generateDashboardMiddleware($dashboard);
-        
+        $this->generateDashboardMiddleware($dashboard, $overwriteMigrations);
         // Generate Dashboard Policies
-        $this->generateDashboardPolicies($dashboard);
+        $this->generateDashboardPolicies($dashboard, $overwriteMigrations);
     }
 
-    protected function generateFrontendComponents($dashboard, Tree $tree): void
+    protected function generateFrontendComponents($dashboard, Tree $tree, $overwriteMigrations = false): void
     {
         // Generate Dashboard Layout
-        $this->generateDashboardLayout($dashboard);
+        $this->generateDashboardLayout($dashboard, $overwriteMigrations);
         
         // Generate Dashboard Page
-        $this->generateDashboardPage($dashboard);
+        $this->generateDashboardPage($dashboard, $overwriteMigrations);
         
         // Generate Widget Components
-        $this->generateWidgetComponents($dashboard);
+        $this->generateWidgetComponents($dashboard, $overwriteMigrations);
         
         // Generate Dashboard Store (if using state management)
-        $this->generateDashboardStore($dashboard);
+        $this->generateDashboardStore($dashboard, $overwriteMigrations);
         
         // Generate Dashboard Styles
-        $this->generateDashboardStyles($dashboard);
+        $this->generateDashboardStyles($dashboard, $overwriteMigrations);
     }
 
-    protected function generateDashboardController($dashboard): void
+    protected function generateDashboardController($dashboard, $overwriteMigrations = false): void
     {
         $stub = $this->filesystem->stub('dashboard.controller.stub');
         if (!$stub) {
@@ -98,7 +113,7 @@ class DashboardGenerator implements Generator
         $this->create($path, $content);
     }
 
-    protected function generateDashboardService($dashboard, Tree $tree): void
+    protected function generateDashboardService($dashboard, Tree $tree, $overwriteMigrations = false): void
     {
         $stub = $this->filesystem->stub('dashboard.service.stub');
         if (!$stub) {
@@ -116,7 +131,7 @@ class DashboardGenerator implements Generator
         $this->create($path, $content);
     }
 
-    protected function generateWidgetServices($dashboard, Tree $tree): void
+    protected function generateWidgetServices($dashboard, Tree $tree, $overwriteMigrations = false): void
     {
         foreach ($dashboard->widgets() as $widget) {
             $stub = $this->filesystem->stub('dashboard.widget.service.stub');
@@ -136,7 +151,7 @@ class DashboardGenerator implements Generator
         }
     }
 
-    protected function generateDashboardMiddleware($dashboard): void
+    protected function generateDashboardMiddleware($dashboard, $overwriteMigrations = false): void
     {
         $stub = $this->filesystem->stub('dashboard.middleware.stub');
         if (!$stub) {
@@ -154,7 +169,7 @@ class DashboardGenerator implements Generator
         $this->create($path, $content);
     }
 
-    protected function generateDashboardPolicies($dashboard): void
+    protected function generateDashboardPolicies($dashboard, $overwriteMigrations = false): void
     {
         $stub = $this->filesystem->stub('dashboard.policy.stub');
         if (!$stub) {
@@ -172,7 +187,7 @@ class DashboardGenerator implements Generator
         $this->create($path, $content);
     }
 
-    protected function generateDashboardLayout($dashboard): void
+    protected function generateDashboardLayout($dashboard, $overwriteMigrations = false): void
     {
         $stub = $this->filesystem->stub('dashboard.layout.stub');
         if (!$stub) {
@@ -190,7 +205,7 @@ class DashboardGenerator implements Generator
         $this->create($path, $content);
     }
 
-    protected function generateDashboardPage($dashboard): void
+    protected function generateDashboardPage($dashboard, $overwriteMigrations = false): void
     {
         $stub = $this->filesystem->stub('dashboard.page.stub');
         if (!$stub) {
@@ -208,7 +223,7 @@ class DashboardGenerator implements Generator
         $this->create($path, $content);
     }
 
-    protected function generateWidgetComponents($dashboard): void
+    protected function generateWidgetComponents($dashboard, $overwriteMigrations = false): void
     {
         foreach ($dashboard->widgets() as $widget) {
             $stub = $this->filesystem->stub('dashboard.widget.component.stub');
@@ -228,7 +243,7 @@ class DashboardGenerator implements Generator
         }
     }
 
-    protected function generateDashboardStore($dashboard): void
+    protected function generateDashboardStore($dashboard, $overwriteMigrations = false): void
     {
         $stub = $this->filesystem->stub('dashboard.store.stub');
         if (!$stub) {
@@ -246,7 +261,7 @@ class DashboardGenerator implements Generator
         $this->create($path, $content);
     }
 
-    protected function generateDashboardStyles($dashboard): void
+    protected function generateDashboardStyles($dashboard, $overwriteMigrations = false): void
     {
         $stub = $this->filesystem->stub('dashboard.styles.stub');
         if (!$stub) {
@@ -264,7 +279,7 @@ class DashboardGenerator implements Generator
         $this->create($path, $content);
     }
 
-    protected function generateApiRoutes($dashboard): void
+    protected function generateApiRoutes($dashboard, $overwriteMigrations = false): void
     {
         $stub = $this->filesystem->stub('dashboard.routes.stub');
         if (!$stub) {
@@ -282,7 +297,7 @@ class DashboardGenerator implements Generator
         $this->create($path, $content);
     }
 
-    protected function generateDashboardConfig($dashboard): void
+    protected function generateDashboardConfig($dashboard, $overwriteMigrations = false): void
     {
         $stub = $this->filesystem->stub('dashboard.config.stub');
         if (!$stub) {
@@ -306,11 +321,22 @@ class DashboardGenerator implements Generator
             '{{ dashboardName }}' => Str::studly($dashboard->name()),
             '{{ dashboardTitle }}' => $dashboard->title(),
             '{{ dashboardDescription }}' => $dashboard->description(),
-            '{{ widgets }}' => $this->generateWidgetMethods($dashboard),
+            '{{ widgets }}' => $this->generateWidgetArrayEntries($dashboard),
+            '{{ widgetMethods }}' => $this->generateWidgetMethods($dashboard),
+            '{{ widgetImports }}' => $this->generateWidgetImports($dashboard),
             '{{ permissions }}' => $this->generatePermissionChecks($dashboard),
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $stub);
+    }
+
+    protected function generateWidgetArrayEntries($dashboard): string
+    {
+        $entries = [];
+        foreach ($dashboard->widgets() as $widget) {
+            $entries[] = str_repeat(' ', 12) . "'" . $widget->name() . "' => \$this->get" . Str::studly($widget->name()) . "Data(),";
+        }
+        return implode("\n", $entries);
     }
 
     protected function populateServiceStub(string $stub, $dashboard, Tree $tree): string
@@ -329,10 +355,21 @@ class DashboardGenerator implements Generator
         $model = $widget->model();
         $modelData = $model ? $tree->modelForContext($model) : null;
 
+        $modelQuery = '';
+        $modelImports = '';
+        if ($model) {
+            $modelQuery = '$query = ' . Str::studly($model) . '::query();';
+            $modelImports = 'use App\\Models\\' . Str::studly($model) . ';';
+        } else {
+            $modelQuery = "// TODO: Specify a model for this widget in your dashboard YAML.\n        throw new \\RuntimeException('No model specified for widget " . Str::studly($widget->name()) . ".');";
+        }
+
         $replacements = [
             '{{ widgetName }}' => Str::studly($widget->name()),
             '{{ widgetType }}' => $widget->type(),
             '{{ modelName }}' => $model ? Str::studly($model) : '',
+            '{{ modelQuery }}' => $modelQuery,
+            '{{ modelImports }}' => $modelImports,
             '{{ columns }}' => $this->generateColumnQueries($widget, $modelData),
             '{{ filters }}' => $this->generateFilterQueries($widget),
         ];
@@ -380,16 +417,25 @@ class DashboardGenerator implements Generator
     {
         $methods = [];
         foreach ($dashboard->widgets() as $widget) {
-            $methods[] = "    public function get" . Str::studly($widget->name()) . "Data()\n    {\n        return app(" . Str::studly($widget->name()) . "Service::class)->getData();\n    }";
+            $methods[] = "    public function get" . Str::studly($widget->name()) . "Data()\n    {\n        return app(\\App\\Services\\Dashboard\\Widgets\\" . Str::studly($widget->name()) . "Service::class)->getData();\n    }";
         }
         return implode("\n\n", $methods);
+    }
+
+    protected function generateWidgetImports($dashboard): string
+    {
+        $imports = [];
+        foreach ($dashboard->widgets() as $widget) {
+            $imports[] = "use App\\Services\\Dashboard\\Widgets\\" . Str::studly($widget->name()) . "Service;";
+        }
+        return implode("\n", $imports);
     }
 
     protected function generatePermissionChecks($dashboard): string
     {
         $checks = [];
         foreach ($dashboard->permissions() as $permission) {
-            $checks[] = "        \$this->authorize('" . $permission . "');";
+            $checks[] = "        Gate::authorize('" . $permission . "');";
         }
         return implode("\n", $checks);
     }
@@ -435,7 +481,7 @@ class DashboardGenerator implements Generator
 
         $columns = $widget->columns();
         if (empty($columns)) {
-            return "return \$query->select('*');";
+            return "\$query->select('*');";
         }
 
         $columnQueries = [];
@@ -443,7 +489,7 @@ class DashboardGenerator implements Generator
             $columnQueries[] = "            ->select('$column')";
         }
 
-        return "return \$query\n" . implode("\n", $columnQueries) . ";";
+        return "\$query\n" . implode("\n", $columnQueries) . ";";
     }
 
     protected function generateFilterQueries($widget): string
@@ -668,7 +714,7 @@ class DashboardGenerator implements Generator
             ];
         }
 
-        return "return " . var_export($config, true) . ";";
+        return var_export($config, true);
     }
 
     protected function create(string $path, string $content): void
@@ -676,6 +722,29 @@ class DashboardGenerator implements Generator
         $this->filesystem->makeDirectory(dirname($path), 0755, true, true);
         $this->filesystem->put($path, $content);
         $this->output['created'][] = $path;
+        if (function_exists('info')) {
+            info('[DashboardGenerator] Created: ' . $path);
+        } else {
+            error_log('[DashboardGenerator] Created: ' . $path);
+        }
+    }
+
+    protected function registerDashboardAccessMiddlewareAlias(): void
+    {
+        $bootstrapAppPath = 'bootstrap/app.php';
+        if (!$this->filesystem->exists($bootstrapAppPath)) {
+            return;
+        }
+        $content = $this->filesystem->get($bootstrapAppPath);
+        $aliasLine = "        \$middleware->alias(['dashboard.access' => \\App\\Http\\Middleware\\DashboardAccess::class]);";
+        if (strpos($content, "dashboard.access") === false) {
+            $content = preg_replace(
+                '/(->withMiddleware\(function \(Middleware \\$middleware\) \{\n)/',
+                "$1$aliasLine\n",
+                $content
+            );
+            $this->filesystem->put($bootstrapAppPath, $content);
+        }
     }
 
     public function types(): array

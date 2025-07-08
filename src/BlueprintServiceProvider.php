@@ -4,13 +4,19 @@ namespace Blueprint;
 
 use Blueprint\Commands\BuildCommand;
 use Blueprint\Commands\EraseCommand;
+use Blueprint\Commands\ImportDashboardCommand;
 use Blueprint\Commands\InitCommand;
 use Blueprint\Commands\NewCommand;
 use Blueprint\Commands\PublishStubsCommand;
 use Blueprint\Commands\TraceCommand;
+use Blueprint\Commands\ValidateYamlCommand;
 use Blueprint\Contracts\PluginDiscovery;
+use Blueprint\Tracer;
+use Blueprint\Builder;
 use Blueprint\Contracts\PluginManager;
+use Blueprint\FileMixins;
 use Blueprint\Plugin\PluginDiscovery as ConcretePluginDiscovery;
+use Blueprint\Services\DashboardPluginManager;
 use Blueprint\Plugin\PluginManager as ConcretePluginManager;
 use Blueprint\Plugin\GeneratorRegistry;
 use Blueprint\Plugin\ConfigValidator;
@@ -80,6 +86,10 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
         $this->app->bind('command.blueprint.init', fn ($app) => new InitCommand);
         $this->app->bind('command.blueprint.stubs', fn ($app) => new PublishStubsCommand);
         $this->app->bind('command.blueprint.import-dashboard', fn ($app) => new ImportDashboardCommand);
+        $this->app->bind('command.blueprint.validate-yaml', fn ($app) => new ValidateYamlCommand(
+            app(\Blueprint\ErrorHandling\RecoveryManager::class),
+            app(\Blueprint\ErrorHandling\ErrorLogger::class)
+        ));
 
         $this->app->singleton(Blueprint::class, function ($app) {
             $blueprint = new Blueprint;
@@ -124,6 +134,10 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
                 $type = class_basename($generator);
                 $generatorRegistry->registerGenerator($type, $generatorInstance);
             }
+            // Register DashboardGenerator explicitly
+            $dashboardGenerator = new \Blueprint\Generators\DashboardGenerator($app['files']);
+            $blueprint->registerGenerator($dashboardGenerator);
+            $generatorRegistry->registerGenerator('dashboard', $dashboardGenerator);
 
             return $blueprint;
         });
@@ -142,6 +156,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             'command.blueprint.init',
             'command.blueprint.stubs',
             'command.blueprint.import-dashboard',
+            'command.blueprint.validate-yaml',
         ]);
     }
 
@@ -157,12 +172,15 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             'command.blueprint.new',
             'command.blueprint.init',
             'command.blueprint.import-dashboard',
+            'command.blueprint.validate-yaml',
             Blueprint::class,
             PluginDiscovery::class,
             PluginManager::class,
             GeneratorRegistry::class,
             ConfigValidator::class,
             \Blueprint\Services\DatabaseSchemaService::class,
+            \Blueprint\ErrorHandling\ErrorLogger::class,
+            \Blueprint\ErrorHandling\RecoveryManager::class,
         ];
     }
 
@@ -181,6 +199,14 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
 
         $this->app->singleton(ConfigValidator::class, function ($app) {
             return new ConfigValidator();
+        });
+
+        $this->app->singleton(\Blueprint\ErrorHandling\ErrorLogger::class, function ($app) {
+            return new \Blueprint\ErrorHandling\ErrorLogger();
+        });
+
+        $this->app->singleton(\Blueprint\ErrorHandling\RecoveryManager::class, function ($app) {
+            return new \Blueprint\ErrorHandling\RecoveryManager($app[\Blueprint\ErrorHandling\ErrorLogger::class]);
         });
 
         $this->app->singleton(PluginManager::class, function ($app) {

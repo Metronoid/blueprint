@@ -11,17 +11,48 @@ class ParsingException extends BlueprintException
 {
     public static function invalidYaml(string $filePath, string $originalMessage): self
     {
+        // Extract line number from error message if available
+        $lineNumber = null;
+        if (preg_match('/at line (\d+)/', $originalMessage, $matches)) {
+            $lineNumber = (int) $matches[1];
+        }
+        
+        // Try to read the file content for better context
+        $fileContent = null;
+        $contextLines = [];
+        if (file_exists($filePath)) {
+            $fileContent = file_get_contents($filePath);
+            if ($lineNumber && $fileContent) {
+                $lines = explode("\n", $fileContent);
+                $startLine = max(1, $lineNumber - 3);
+                $endLine = min(count($lines), $lineNumber + 3);
+                
+                for ($i = $startLine; $i <= $endLine; $i++) {
+                    $contextLines[$i] = $lines[$i - 1] ?? '';
+                }
+            }
+        }
+        
+        $context = [
+            'file' => $filePath,
+            'line_number' => $lineNumber,
+            'yaml_content' => $fileContent,
+            'context_lines' => $contextLines,
+            'error_message' => $originalMessage
+        ];
+
         $exception = new self(
             "Failed to parse YAML file: {$originalMessage}",
             1001,
             null,
-            ['file' => $filePath],
+            $context,
             [
                 'Check for proper YAML indentation (use spaces, not tabs)',
                 'Ensure all strings with special characters are quoted',
                 'Verify that lists and objects are properly formatted',
                 'Check for missing colons after keys',
-                'Validate that multiline strings use proper YAML syntax'
+                'Validate that multiline strings use proper YAML syntax',
+                $lineNumber ? "Review the syntax around line {$lineNumber}" : null
             ]
         );
 

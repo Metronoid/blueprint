@@ -10,6 +10,9 @@ class DashboardLexer implements Lexer
 {
     public function analyze(array $tokens): array
     {
+        $dashboardNames = isset($tokens['dashboards']) ? array_keys($tokens['dashboards']) : [];
+        $msg = '[DashboardLexer] Dashboards in tokens: ' . json_encode($dashboardNames);
+        file_put_contents('/tmp/dashboardlexer.log', $msg . "\n", FILE_APPEND);
         $registry = [
             'dashboards' => [],
         ];
@@ -46,6 +49,9 @@ class DashboardLexer implements Lexer
         }
 
         if (isset($definition['permissions'])) {
+            if (!is_array($definition['permissions'])) {
+                throw new \InvalidArgumentException("Permissions must be an array, got " . gettype($definition['permissions']));
+            }
             $dashboard->setPermissions($definition['permissions']);
         }
 

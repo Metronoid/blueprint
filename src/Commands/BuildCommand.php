@@ -190,40 +190,55 @@ class BuildCommand extends Command
      */
     private function displayErrorDetails(BlueprintException $exception): void
     {
-        // Display file path and line number if available
-        if ($exception->getFilePath()) {
-            $this->line('');
-            $this->line('File: ' . $exception->getFilePath());
-            if ($exception->getLineNumber()) {
-                $this->line('Line: ' . $exception->getLineNumber());
-            }
-        }
-
-        // Display context information
         $context = $exception->getContext();
-        if (!empty($context)) {
+        
+        // Show file information
+        if (isset($context['file'])) {
+            $this->line('');
+            $this->line('File: ' . $context['file']);
+        }
+        
+        // Show line number and context for parsing errors
+        if (isset($context['line_number']) && isset($context['context_lines'])) {
             $this->line('');
             $this->line('Context:');
-            foreach ($context as $key => $value) {
-                $this->line("  {$key}: " . $this->formatContextValue($value));
+            $this->line('');
+            
+            foreach ($context['context_lines'] as $lineNum => $lineContent) {
+                $prefix = $lineNum === $context['line_number'] ? '>>> ' : '    ';
+                $this->line($prefix . sprintf('%3d', $lineNum) . ': ' . $lineContent);
             }
+            
+            $this->line('');
         }
-
-        // Display suggestions
+        
+        // Show suggestions
         $suggestions = $exception->getSuggestions();
         if (!empty($suggestions)) {
-            $this->line('');
             $this->line('Suggestions:');
             foreach ($suggestions as $suggestion) {
-                $this->line("  • {$suggestion}");
+                if ($suggestion) {
+                    $this->line('  • ' . $suggestion);
+                }
             }
-        }
-
-        // Display verbose stack trace if requested
-        if ($this->option('verbose')) {
             $this->line('');
-            $this->line('Stack trace:');
-            $this->line($exception->getTraceAsString());
+        }
+        
+        // Show recovery information if available
+        if (isset($context['fixed_content'])) {
+            $this->line('Auto-fixed content:');
+            $this->line('');
+            $this->line($context['fixed_content']);
+            $this->line('');
+        }
+        
+        // Show remaining issues if any
+        if (isset($context['remaining_issues'])) {
+            $this->line('Remaining issues:');
+            foreach ($context['remaining_issues'] as $issue) {
+                $this->line('  • ' . $issue);
+            }
+            $this->line('');
         }
     }
 

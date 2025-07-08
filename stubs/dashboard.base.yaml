@@ -10,6 +10,9 @@ dashboards:
       primary_color: "#1f2937"
       secondary_color: "#6b7280"
       accent_color: "#3b82f6"
+      background_color: "#f9fafb"
+      text_color: "#1f2937"
+      border_color: "#e5e7eb"
     permissions:
       - "view-dashboard"
       - "manage-users"
@@ -35,16 +38,6 @@ dashboards:
       UserStats:
         type: "metric"
         title: "Total Users"
-        model: "User"
-        columns: ["id"]
-        position:
-          area: "user-stats"
-          x: 0
-          y: 0
-          width: 1
-          height: 1
-        permissions:
-          - "view-users"
         config:
           format: "number"
           color: "blue"
@@ -52,18 +45,6 @@ dashboards:
       RecentUsers:
         type: "table"
         title: "Recent Users"
-        model: "User"
-        columns: ["id", "name", "email", "created_at"]
-        position:
-          area: "recent-users"
-          x: 1
-          y: 0
-          width: 2
-          height: 2
-        filters:
-          - "created_at"
-        permissions:
-          - "view-users"
         config:
           limit: 10
           sort_by: "created_at"
@@ -72,16 +53,6 @@ dashboards:
       UserGrowth:
         type: "chart"
         title: "User Growth"
-        model: "User"
-        columns: ["created_at"]
-        position:
-          area: "user-growth"
-          x: 0
-          y: 1
-          width: 3
-          height: 2
-        permissions:
-          - "view-analytics"
         config:
           chart_type: "line"
           time_period: "30d"
@@ -90,21 +61,10 @@ dashboards:
       SystemHealth:
         type: "metric"
         title: "System Health"
-        position:
-          area: "system-health"
-          x: 3
-          y: 0
-          width: 1
-          height: 1
-        permissions:
-          - "view-system"
         config:
           format: "percentage"
           color: "green"
           threshold: 90
-        data:
-          source: "system"
-          metric: "uptime"
     
     api:
       dashboard_data:
