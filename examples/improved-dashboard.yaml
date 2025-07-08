@@ -1,12 +1,13 @@
 models:
   User:
-    name: string:400
-    email: string:400 unique
-    email_verified_at: timestamp nullable
-    password: string
-    remember_token: string:100 nullable
-    created_at: timestamp
-    updated_at: timestamp
+    columns:
+      name: string:400
+      email: string:400 unique
+      email_verified_at: timestamp nullable
+      password: string
+      remember_token: string:100 nullable
+      created_at: timestamp
+      updated_at: timestamp
     timestamps: true
     relationships:
       hasMany: Post
@@ -14,52 +15,56 @@ models:
       hasMany: Order
 
   Post:
-    title: string:400
-    content: text
-    published_at: timestamp nullable
-    author_id: id:unsigned
-    status: enum:['draft', 'published', 'archived']
-    created_at: timestamp
-    updated_at: timestamp
+    columns:
+      title: string:400
+      content: text
+      published_at: timestamp nullable
+      author_id: id:unsigned
+      status: enum:['draft', 'published', 'archived']
+      created_at: timestamp
+      updated_at: timestamp
     timestamps: true
     relationships:
       belongsTo: User
       hasMany: Comment
 
   Comment:
-    content: text
-    post_id: id:unsigned
-    user_id: id:unsigned
-    approved: boolean default:false
-    created_at: timestamp
-    updated_at: timestamp
+    columns:
+      content: text
+      post_id: id:unsigned
+      user_id: id:unsigned
+      approved: boolean default:false
+      created_at: timestamp
+      updated_at: timestamp
     timestamps: true
     relationships:
       belongsTo: Post
       belongsTo: User
 
   Order:
-    order_number: string:100 unique
-    user_id: id:unsigned
-    total_amount: decimal:10,2
-    status: enum:['pending', 'processing', 'shipped', 'delivered', 'cancelled']
-    shipping_address: text
-    billing_address: text
-    created_at: timestamp
-    updated_at: timestamp
+    columns:
+      order_number: string:100 unique
+      user_id: id:unsigned
+      total_amount: decimal:10,2
+      status: enum:['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+      shipping_address: text
+      billing_address: text
+      created_at: timestamp
+      updated_at: timestamp
     timestamps: true
     relationships:
       belongsTo: User
       hasMany: OrderItem
 
   OrderItem:
-    order_id: id:unsigned
-    product_name: string:400
-    quantity: integer
-    unit_price: decimal:8,2
-    total_price: decimal:10,2
-    created_at: timestamp
-    updated_at: timestamp
+    columns:
+      order_id: id:unsigned
+      product_name: string:400
+      quantity: integer
+      unit_price: decimal:8,2
+      total_price: decimal:10,2
+      created_at: timestamp
+      updated_at: timestamp
     timestamps: true
     relationships:
       belongsTo: Order

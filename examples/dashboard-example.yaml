@@ -4,11 +4,12 @@
 # Models for the dashboard
 models:
   User:
-    name: string:400
-    email: string:400 unique
-    email_verified_at: timestamp nullable
-    password: string:400
-    remember_token: string:100 nullable
+    columns:
+      name: string:400
+      email: string:400 unique
+      email_verified_at: timestamp nullable
+      password: string:400
+      remember_token: string:100 nullable
     timestamps: true
     relationships:
       hasMany:
@@ -29,14 +30,15 @@ models:
       password: required|string|min:8
 
   Post:
-    title: string:400
-    slug: string:400 unique
-    content: longtext
-    excerpt: text nullable
-    featured_image: string:400 nullable
-    status: enum:published,draft,archived default:published
-    published_at: timestamp nullable
-    author_id: id:unsigned foreign:users.id
+    columns:
+      title: string:400
+      slug: string:400 unique
+      content: longtext
+      excerpt: text nullable
+      featured_image: string:400 nullable
+      status: enum:published,draft,archived default:published
+      published_at: timestamp nullable
+      author_id: id:unsigned foreign:users.id
     timestamps: true
     relationships:
       belongsTo:
@@ -59,12 +61,13 @@ models:
       status: required|in:published,draft,archived
 
   Comment:
-    content: text
-    status: enum:approved,pending,spam default:pending
-    author_name: string:400
-    author_email: string:400
-    post_id: id:unsigned foreign:posts.id
-    user_id: id:unsigned nullable foreign:users.id
+    columns:
+      content: text
+      status: enum:approved,pending,spam default:pending
+      author_name: string:400
+      author_email: string:400
+      post_id: id:unsigned foreign:posts.id
+      user_id: id:unsigned nullable foreign:users.id
     timestamps: true
     relationships:
       belongsTo:
