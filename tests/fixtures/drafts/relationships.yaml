@@ -1,5 +1,5 @@
 models:
   Comment:
     columns:
-      post_id: id
-      author_id: id:user
+      post_id: id foreign
+      author_id: id:user foreign

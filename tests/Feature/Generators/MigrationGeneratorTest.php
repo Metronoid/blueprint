@@ -27,6 +27,13 @@ final class MigrationGeneratorTest extends TestCase
     {
         parent::setUp();
 
+        // Set config defaults for constraint tests
+        config(['blueprint.use_constraints' => false]);
+        config(['blueprint.on_delete' => 'cascade']);
+
+        $this->files = $this->filesystem = \Mockery::mock(\Illuminate\Filesystem\Filesystem::class);
+        $this->app->instance(\Illuminate\Filesystem\Filesystem::class, $this->filesystem);
+
         $this->subject = new MigrationGenerator($this->files);
 
         $this->blueprint = new Blueprint;
@@ -135,9 +142,10 @@ final class MigrationGeneratorTest extends TestCase
     #[Test]
     public function output_creates_constraints_for_unconventional_foreign_reference_migration(): void
     {
-        $this->app->config->set('blueprint.use_constraints', true);
+        config(['blueprint.use_constraints' => true]);
+        $this->subject = new MigrationGenerator($this->files);
 
-        $this->files->expects('stub')
+        $this->files->shouldReceive('stub')
             ->with('migration.stub')
             ->andReturn($this->stub('migration.stub'));
 
@@ -146,10 +154,12 @@ final class MigrationGeneratorTest extends TestCase
 
         $model_migration = str_replace('timestamp', $now->format('Y_m_d_His'), 'database/migrations/timestamp_create_comments_table.php');
 
-        $this->files->expects('exists')->andReturn(false);
+        $this->files->shouldReceive('exists')->andReturn(false);
 
-        $this->files->expects('put')
-            ->with($model_migration, $this->fixture('migrations/relationships-constraints.php'));
+        $this->files->shouldReceive('put')
+            ->with($model_migration, $this->fixture('migrations/relationships-constraints.php'))
+            ->once()
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/relationships.yaml'));
         $tree = $this->blueprint->analyze($tokens);
@@ -295,7 +305,8 @@ final class MigrationGeneratorTest extends TestCase
     #[Test]
     public function output_also_creates_constraints_for_pivot_table_migration_for_ulids(): void
     {
-        $this->app->config->set('blueprint.use_constraints', true);
+        config(['blueprint.use_constraints' => true]);
+        $this->subject = new MigrationGenerator($this->files);
 
         $this->files->expects('stub')
             ->with('migration.stub')
@@ -343,7 +354,8 @@ final class MigrationGeneratorTest extends TestCase
     #[Test]
     public function output_also_creates_constraints_for_pivot_table_migration_for_uuids(): void
     {
-        $this->app->config->set('blueprint.use_constraints', true);
+        config(['blueprint.use_constraints' => true]);
+        $this->subject = new MigrationGenerator($this->files);
 
         $this->files->expects('stub')
             ->with('migration.stub')
@@ -391,9 +403,10 @@ final class MigrationGeneratorTest extends TestCase
     #[Test]
     public function output_also_creates_constraints_for_pivot_table_migration(): void
     {
-        $this->app->config->set('blueprint.use_constraints', true);
+        config(['blueprint.use_constraints' => true]);
+        $this->subject = new MigrationGenerator($this->files);
 
-        $this->files->expects('stub')
+        $this->files->shouldReceive('stub')
             ->with('migration.stub')
             ->andReturn($this->stub('migration.stub'));
 
@@ -403,13 +416,17 @@ final class MigrationGeneratorTest extends TestCase
         $model_migration = str_replace('timestamp', $now->copy()->subSecond()->format('Y_m_d_His'), 'database/migrations/timestamp_create_journeys_table.php');
         $pivot_migration = str_replace('timestamp', $now->format('Y_m_d_His'), 'database/migrations/timestamp_create_diary_journey_table.php');
 
-        $this->files->expects('exists')->twice()->andReturn(false);
+        $this->files->shouldReceive('exists')->twice()->andReturn(false);
 
-        $this->files->expects('put')
-            ->with($model_migration, $this->fixture('migrations/belongs-to-many-key-constraints.php'));
+        $this->files->shouldReceive('put')
+            ->with($model_migration, $this->fixture('migrations/belongs-to-many-key-constraints.php'))
+            ->once()
+            ->andReturn(true);
 
-        $this->files->expects('put')
-            ->with($pivot_migration, $this->fixture('migrations/belongs-to-many-pivot-key-constraints.php'));
+        $this->files->shouldReceive('put')
+            ->with($pivot_migration, $this->fixture('migrations/belongs-to-many-pivot-key-constraints.php'))
+            ->once()
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/belongs-to-many.yaml'));
         $tree = $this->blueprint->analyze($tokens);
@@ -501,10 +518,11 @@ final class MigrationGeneratorTest extends TestCase
     #[Test]
     public function output_creates_foreign_keys_with_nullable_chained_correctly(): void
     {
-        $this->app->config->set('blueprint.use_constraints', true);
-        $this->app->config->set('blueprint.on_delete', 'null');
+        config(['blueprint.use_constraints' => true]);
+        config(['blueprint.on_delete' => 'null']);
+        $this->subject = new MigrationGenerator($this->files);
 
-        $this->files->expects('stub')
+        $this->files->shouldReceive('stub')
             ->with('migration.stub')
             ->andReturn($this->stub('migration.stub'));
 
@@ -513,11 +531,12 @@ final class MigrationGeneratorTest extends TestCase
 
         $model_migration = str_replace('timestamp', $now->format('Y_m_d_His'), 'database/migrations/timestamp_create_carts_table.php');
 
-        $this->files->expects('exists')->andReturn(false);
+        $this->files->shouldReceive('exists')->andReturn(false);
 
-        $this->files
-            ->expects('put')
-            ->with($model_migration, $this->fixture('migrations/nullable-chaining.php'));
+        $this->files->shouldReceive('put')
+            ->with($model_migration, $this->fixture('migrations/nullable-chaining.php'))
+            ->once()
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/nullable-chaining.yaml'));
         $tree = $this->blueprint->analyze($tokens);
@@ -557,8 +576,6 @@ final class MigrationGeneratorTest extends TestCase
     #[Test]
     public function output_does_not_generate_relationship_for_uuid(): void
     {
-        $this->app->config->set('blueprint.use_constraints', true);
-
         $this->files->expects('stub')
             ->with('migration.stub')
             ->andReturn($this->stub('migration.stub'));
@@ -615,8 +632,6 @@ final class MigrationGeneratorTest extends TestCase
     #[Test]
     public function output_softdelete_column_last(): void
     {
-        $this->app->config->set('blueprint.use_constraints', true);
-
         $this->files->expects('stub')
             ->with('migration.stub')
             ->andReturn($this->stub('migration.stub'));

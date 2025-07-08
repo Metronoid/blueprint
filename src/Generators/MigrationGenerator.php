@@ -182,12 +182,18 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
                 $dataType = 'foreignId';
             }
 
-            if (in_array($dataType, self::UNSIGNABLE_TYPES) && in_array('unsigned', $column->modifiers())) {
-                $dataType = 'unsigned' . ucfirst($dataType);
-            }
-
-            if (in_array($dataType, self::NULLABLE_TYPES) && $column->isNullable()) {
-                $dataType = 'nullable' . ucfirst($dataType);
+            // If this column should have a foreign key constraint, output only the chained version and skip the rest
+            if ($this->shouldAddForeignKeyConstraint($column)) {
+                $this->hasForeignKeyConstraints = true;
+                $foreign_modifier = $column->isForeignKey();
+                $definition .= $this->buildForeignKey(
+                    $column->name(),
+                    $foreign_modifier === 'foreign' ? null : $foreign_modifier,
+                    $column->dataType(),
+                    $column->attributes(),
+                    $column->modifiers()
+                ) . ';' . PHP_EOL;
+                continue;
             }
 
             $column_definition = self::INDENT;
@@ -226,20 +232,6 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
 
             $modifiers = $column->modifiers();
 
-            $foreign = '';
-            $foreign_modifier = $column->isForeignKey();
-
-            if ($this->shouldAddForeignKeyConstraint($column)) {
-                $this->hasForeignKeyConstraints = true;
-                $foreign = $this->buildForeignKey(
-                    $column->name(),
-                    $foreign_modifier === 'foreign' ? null : $foreign_modifier,
-                    $column->dataType(),
-                    $columnAttributes,
-                    $column->modifiers()
-                );
-            }
-
             foreach (
                 $modifiers as $modifier
             ) {
@@ -255,17 +247,20 @@ class MigrationGenerator extends AbstractClassGenerator implements Generator
                     $column_definition .= '->unique()';
                 } elseif ($modifier === 'primary') {
                     $column_definition .= '->primary()';
-                } elseif ($modifier === 'foreign') {
-                    $column_definition .= $foreign;
-                } elseif (is_string($modifier) && Str::startsWith($modifier, 'foreign:')) {
-                    $column_definition .= $this->buildForeignKey(
-                        $column->name(),
-                        Str::after($modifier, 'foreign:'),
-                        $column->dataType(),
-                        $columnAttributes,
-                        $column->modifiers()
-                    );
-                } elseif (is_string($modifier) && Str::startsWith($modifier, 'onDelete:')) {
+                }
+                // Do not append foreign key constraints here, handled above
+                // elseif ($modifier === 'foreign') {
+                //     $column_definition .= $foreign;
+                // } elseif (is_string($modifier) && Str::startsWith($modifier, 'foreign:')) {
+                //     $column_definition .= $this->buildForeignKey(
+                //         $column->name(),
+                //         Str::after($modifier, 'foreign:'),
+                //         $column->dataType(),
+                //         $columnAttributes,
+                //         $column->modifiers()
+                //     );
+                // }
+                elseif (is_string($modifier) && Str::startsWith($modifier, 'onDelete:')) {
                     $column_definition .= $this->buildOnDeleteClause(Str::after($modifier, 'onDelete:'));
                 } elseif (is_string($modifier) && Str::startsWith($modifier, 'onUpdate:')) {
                     $column_definition .= $this->buildOnUpdateClause(Str::after($modifier, 'onUpdate:'));
