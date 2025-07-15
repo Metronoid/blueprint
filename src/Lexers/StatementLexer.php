@@ -24,6 +24,22 @@ class StatementLexer implements Lexer
         $statements = [];
 
         foreach ($tokens as $command => $statement) {
+            // If $statement is an array, flatten or convert to string
+            if (is_array($statement)) {
+                if (count($statement) === 1 && isset($statement[0])) {
+                    $statement = $statement[0];
+                } else {
+                    $statement = implode(', ', array_map(function($v) {
+                        return is_scalar($v) ? $v : var_export($v, true);
+                    }, $statement));
+                }
+            } elseif (is_object($statement)) {
+                if (method_exists($statement, '__toString')) {
+                    $statement = (string)$statement;
+                } else {
+                    $statement = var_export($statement, true);
+                }
+            }
             $statements[] = match ($command) {
                 'dispatch' => $this->analyzeDispatch($statement),
                 'fire' => $this->analyzeEvent($statement),

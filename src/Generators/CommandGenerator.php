@@ -15,11 +15,6 @@ class CommandGenerator extends AbstractClassGenerator implements Generator
     {
         $this->tree = $tree;
 
-        foreach ($tree->dashboards() as $dashboard) {
-            $this->generateDashboardCommands($dashboard, $tree);
-            $this->generateWidgetCommands($dashboard, $tree);
-        }
-
         return $this->output;
     }
 
@@ -65,12 +60,9 @@ class CommandGenerator extends AbstractClassGenerator implements Generator
     {
         $replacements = [
             '{{ namespace }}' => 'App\\Console\\Commands\\Dashboard',
-            '{{ className }}' => Str::studly($dashboard->name()) . 'Command',
-            '{{ dashboardName }}' => Str::studly($dashboard->name()),
-            '{{ commandName }}' => 'dashboard:' . Str::kebab($dashboard->name()),
-            '{{ commandDescription }}' => 'Manage ' . Str::studly($dashboard->name()) . ' dashboard',
-            '{{ commandLogic }}' => $this->generateCommandLogic($dashboard),
-            '{{ imports }}' => $this->generateCommandImports($dashboard, $tree),
+            '{{ class }}' => Str::studly($dashboard->name()) . 'Command',
+            '{{ signature }}' => 'dashboard:' . Str::kebab($dashboard->name()),
+            '{{ description }}' => 'Manage ' . Str::studly($dashboard->name()) . ' dashboard',
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $stub);
@@ -80,69 +72,13 @@ class CommandGenerator extends AbstractClassGenerator implements Generator
     {
         $replacements = [
             '{{ namespace }}' => 'App\\Console\\Commands\\Dashboard\\Widgets',
-            '{{ className }}' => Str::studly($widget->name()) . 'Command',
-            '{{ widgetName }}' => Str::studly($widget->name()),
-            '{{ widgetType }}' => $widget->type(),
-            '{{ commandName }}' => 'widget:' . Str::kebab($widget->name()),
-            '{{ commandDescription }}' => 'Manage ' . Str::studly($widget->name()) . ' widget',
-            '{{ commandLogic }}' => $this->generateWidgetCommandLogic($widget),
-            '{{ imports }}' => $this->generateWidgetCommandImports($widget, $tree),
+            '{{ class }}' => Str::studly($widget->name()) . 'Command',
+            '{{ signature }}' => 'widget:' . Str::kebab($widget->name()),
+            '{{ description }}' => 'Manage ' . Str::studly($widget->name()) . ' widget',
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $stub);
     }
 
-    protected function generateCommandLogic($dashboard): string
-    {
-        $logic = [];
-        
-        // Generate command logic for dashboard
-        $logic[] = "    public function handle()";
-        $logic[] = "    {";
-        $logic[] = "        \$this->info('Managing " . Str::studly($dashboard->name()) . " dashboard...');";
-        $logic[] = "";
-        $logic[] = "        // TODO: Implement dashboard management logic";
-        $logic[] = "";
-        $logic[] = "        \$this->info('Dashboard management completed.');";
-        $logic[] = "    }";
 
-        return implode("\n", $logic);
-    }
-
-    protected function generateCommandImports($dashboard, Tree $tree): string
-    {
-        $imports = [];
-        
-        // Add imports for dashboard commands
-        $imports[] = "use Illuminate\\Console\\Command;";
-
-        return implode("\n", array_unique($imports));
-    }
-
-    protected function generateWidgetCommandLogic($widget): string
-    {
-        $logic = [];
-        
-        // Generate command logic for widget
-        $logic[] = "    public function handle()";
-        $logic[] = "    {";
-        $logic[] = "        \$this->info('Managing " . Str::studly($widget->name()) . " widget...');";
-        $logic[] = "";
-        $logic[] = "        // TODO: Implement widget management logic";
-        $logic[] = "";
-        $logic[] = "        \$this->info('Widget management completed.');";
-        $logic[] = "    }";
-
-        return implode("\n", $logic);
-    }
-
-    protected function generateWidgetCommandImports($widget, Tree $tree): string
-    {
-        $imports = [];
-        
-        // Add imports for widget commands
-        $imports[] = "use Illuminate\\Console\\Command;";
-
-        return implode("\n", array_unique($imports));
-    }
 } 

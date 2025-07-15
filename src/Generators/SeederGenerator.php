@@ -21,8 +21,17 @@ class SeederGenerator extends AbstractClassGenerator implements Generator
 
         $stub = $this->filesystem->stub('seeder.stub');
 
-        foreach ($tree->seeders() as $model) {
-            $model = new Model($model);
+        foreach ($tree->seeders() as $seederName => $seederData) {
+            // Handle both old format (string model names) and new format (seeder objects)
+            if (is_string($seederData)) {
+                // Old format: seeder is just a model name
+                $modelName = $seederData;
+            } else {
+                // New format: seeder is an object with model property
+                $modelName = $seederData['model'] ?? $seederName;
+            }
+            
+            $model = new Model($modelName);
             $path = $this->getPath($model);
             $this->create($path, $this->populateStub($stub, $model));
         }

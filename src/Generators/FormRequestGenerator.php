@@ -15,11 +15,6 @@ class FormRequestGenerator extends AbstractClassGenerator implements Generator
     {
         $this->tree = $tree;
 
-        foreach ($tree->dashboards() as $dashboard) {
-            $this->generateDashboardRequests($dashboard, $tree);
-            $this->generateWidgetRequests($dashboard, $tree);
-        }
-
         return $this->output;
     }
 

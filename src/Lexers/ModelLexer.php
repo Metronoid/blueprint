@@ -198,14 +198,28 @@ class ModelLexer implements Lexer
         if (isset($definition['relationships'])) {
             if (is_array($definition['relationships'])) {
                 foreach ($definition['relationships'] as $type => $relationships) {
-                    foreach (explode(',', $relationships) as $relationship) {
-                        $type = self::$relationships[strtolower($type)];
-                        $model->addRelationship($type, trim($relationship));
+                    if (is_array($relationships)) {
+                        foreach ($relationships as $relationship) {
+                            $type = self::$relationships[strtolower($type)];
+                            $model->addRelationship($type, trim($relationship));
 
-                        if ($type === 'belongsTo') {
-                            $column = $this->columnNameFromRelationship($relationship);
-                            if (isset($columns[$column]) && !str_contains($columns[$column], ' foreign') && !str_contains($columns[$column], ' id')) {
-                                $columns[$column] = trim($this->removeDataTypes($columns[$column]) . ' id:' . Str::before($relationship, ':'));
+                            if ($type === 'belongsTo') {
+                                $column = $this->columnNameFromRelationship($relationship);
+                                if (isset($columns[$column]) && !str_contains($columns[$column], ' foreign') && !str_contains($columns[$column], ' id')) {
+                                    $columns[$column] = trim($this->removeDataTypes($columns[$column]) . ' id:' . Str::before($relationship, ':'));
+                                }
+                            }
+                        }
+                    } else {
+                        foreach (explode(',', $relationships) as $relationship) {
+                            $type = self::$relationships[strtolower($type)];
+                            $model->addRelationship($type, trim($relationship));
+
+                            if ($type === 'belongsTo') {
+                                $column = $this->columnNameFromRelationship($relationship);
+                                if (isset($columns[$column]) && !str_contains($columns[$column], ' foreign') && !str_contains($columns[$column], ' id')) {
+                                    $columns[$column] = trim($this->removeDataTypes($columns[$column]) . ' id:' . Str::before($relationship, ':'));
+                                }
                             }
                         }
                     }

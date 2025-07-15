@@ -34,15 +34,25 @@ class ControllerGenerator extends AbstractClassGenerator implements Generator
 
         $stub = $this->filesystem->stub('controller.class.stub');
 
+        error_log('DEBUG: Tree controllers count: ' . count($tree->controllers()));
+        
         /** @var \Blueprint\Models\Controller $controller */
         foreach ($tree->controllers() as $controller) {
+            error_log('DEBUG: Processing controller: ' . $controller->className());
             $this->addImport($controller, 'Illuminate\\Http\\Request');
             if ($controller->fullyQualifiedNamespace() !== 'App\\Http\\Controllers') {
                 $this->addImport($controller, 'App\\Http\\Controllers\\Controller');
             }
             $path = $this->getPath($controller);
+            error_log('DEBUG: Path: ' . $path);
 
-            $this->create($path, $this->populateStub($stub, $controller));
+            try {
+                $this->create($path, $this->populateStub($stub, $controller));
+                error_log('DEBUG: Successfully created controller');
+            } catch (\Exception $e) {
+                error_log('DEBUG: Exception in create: ' . $e->getMessage());
+                throw $e;
+            }
         }
 
         return $this->output;
@@ -52,22 +62,27 @@ class ControllerGenerator extends AbstractClassGenerator implements Generator
     {
         $stub = str_replace('{{ namespace }}', $controller->fullyQualifiedNamespace(), $stub);
         $stub = str_replace('{{ class }}', $controller->className(), $stub);
-        $stub = str_replace('{{ methods }}', $this->buildMethods($controller), $stub);
+        // Fix: Implode methods array to string
+        $methods = $this->buildMethods($controller);
+        if (is_array($methods)) {
+            $methods = implode("\n\n", $methods);
+        }
+        $stub = str_replace('{{ methods }}', $methods, $stub);
         $stub = str_replace('{{ imports }}', $this->buildImports($controller), $stub);
 
         return $stub;
     }
 
-    protected function buildMethods(Controller $controller): string
+    protected function buildMethods(Controller $controller): array
     {
-        $template = $this->filesystem->stub('controller.method.stub');
+        $methods = [];
 
-        $methods = '';
+        $template = $this->filesystem->stub('controller.method.stub');
 
         $controllerModelName = Str::singular($controller->prefix());
 
         if ($controller->policy()?->authorizeResource()) {
-            $methods .= str_replace(
+            $methods[] = str_replace(
                 [
                     '{{ modelClass }}',
                     '{{ modelVariable }}',
@@ -122,16 +137,7 @@ class ControllerGenerator extends AbstractClassGenerator implements Generator
             }
 
             foreach ($statements as $statement) {
-                if ($statement instanceof SendStatement) {
-                    $body .= self::INDENT . $statement->output() . PHP_EOL;
-                    if ($statement->type() === SendStatement::TYPE_NOTIFICATION_WITH_FACADE) {
-                        $this->addImport($controller, 'Illuminate\\Support\\Facades\\Notification');
-                        $this->addImport($controller, config('blueprint.namespace') . '\\Notification\\' . $statement->mail());
-                    } elseif ($statement->type() === SendStatement::TYPE_MAIL) {
-                        $this->addImport($controller, 'Illuminate\\Support\\Facades\\Mail');
-                        $this->addImport($controller, config('blueprint.namespace') . '\\Mail\\' . $statement->mail());
-                    }
-                } elseif ($statement instanceof ValidateStatement) {
+                if ($statement instanceof ValidateStatement) {
                     $using_validation = true;
                     $class_name = Str::singular($controller->prefix()) . Str::studly($name) . 'Request';
 
@@ -141,63 +147,22 @@ class ControllerGenerator extends AbstractClassGenerator implements Generator
                     $method = str_replace('(Request $request', '(' . $class_name . ' $request', $method);
 
                     $this->addImport($controller, $fqcn);
-                } elseif ($statement instanceof DispatchStatement) {
-                    $body .= self::INDENT . $statement->output() . PHP_EOL;
-                    $this->addImport($controller, config('blueprint.namespace') . '\\Jobs\\' . $statement->job());
-                } elseif ($statement instanceof FireStatement) {
-                    $body .= self::INDENT . $statement->output() . PHP_EOL;
-                    if (!$statement->isNamedEvent()) {
-                        $this->addImport($controller, config('blueprint.namespace') . '\\Events\\' . $statement->event());
-                    }
-                } elseif ($statement instanceof RenderStatement) {
-                    $body .= self::INDENT . $statement->output() . PHP_EOL;
+                    continue; // Skip output generation for ValidateStatement
                 } elseif ($statement instanceof ResourceStatement) {
-                    $fqcn = config('blueprint.namespace') . '\\Http\\Resources\\' . ($controller->namespace() ? $controller->namespace() . '\\' : '') . $statement->name();
-                    $this->addImport($controller, $fqcn);
-                    $body .= self::INDENT . $statement->output() . PHP_EOL;
-
-                    if ($statement->paginate()) {
-                        if (!Str::contains($body, '::all();')) {
-                            $queryStatement = new QueryStatement('all', [$statement->reference()]);
-                            $body = implode(PHP_EOL, [
-                                self::INDENT . $queryStatement->output($statement->reference()),
-                                PHP_EOL . $body,
-                            ]);
-
-                            $this->addImport($controller, $this->determineModel($controller, $queryStatement->model()));
-                        }
-
-                        $body = str_replace('::all();', '::paginate();', $body);
-                    }
-                } elseif ($statement instanceof RedirectStatement) {
-                    $body .= self::INDENT . $statement->output() . PHP_EOL;
-                } elseif ($statement instanceof RespondStatement) {
-                    $body .= self::INDENT . $statement->output() . PHP_EOL;
-                } elseif ($statement instanceof SessionStatement) {
-                    $body .= self::INDENT . $statement->output() . PHP_EOL;
+                    $output = $statement->output([]); // Pass empty array for properties
                 } elseif ($statement instanceof EloquentStatement) {
-                    $body .= self::INDENT . $statement->output($controller->prefix(), $name, $using_validation) . PHP_EOL;
-                    $this->addImport($controller, $this->determineModel($controller, $statement->reference()));
+                    $output = $statement->output($controller->prefix(), $name, $using_validation);
                 } elseif ($statement instanceof QueryStatement) {
-                    $body .= self::INDENT . $statement->output($controller->prefix()) . PHP_EOL;
-                    $this->addImport($controller, $this->determineModel($controller, $statement->model()));
-                } elseif ($statement instanceof InertiaStatement) {
-                    $body .= self::INDENT . $statement->output() . PHP_EOL;
-                    $this->addImport($controller, 'Inertia\Inertia');
+                    $output = $statement->output($controller->prefix());
+                } elseif (method_exists($statement, 'output')) {
+                    $output = $statement->output();
+                } else {
+                    $output = (string)$statement;
                 }
-
-                if (
-                    $controller->parent() &&
-                    ($statement instanceof QueryStatement || $statement instanceof EloquentStatement || $statement instanceof ResourceStatement)
-                ) {
-                    $body = str_replace(
-                        ['::all', Str::singular($controller->prefix()) . '::'],
-                        ['::get', '$' . Str::lower($controller->parent()) . '->' . Str::plural(Str::lower($controller->prefix())) . '()->'],
-                        $body
-                    );
+                if (!is_string($output)) {
+                    // file_put_contents('/tmp/controllergenerator_statement_debug.log', "[ERROR] Method: $name, StatementClass: " . (is_object($statement) ? get_class($statement) : gettype($statement)) . ", Non-string output: " . var_export($output, true) . "\n", FILE_APPEND);
                 }
-
-                $body .= PHP_EOL;
+                $body .= self::INDENT . $output . PHP_EOL;
             }
 
             if (!empty($body)) {
@@ -219,10 +184,10 @@ class ControllerGenerator extends AbstractClassGenerator implements Generator
                 $this->addImport($controller, $returnType);
             }
 
-            $methods .= PHP_EOL . $method;
+            $methods[] = PHP_EOL . $method;
         }
 
-        return trim($methods);
+        return $methods;
     }
 
     private function fullyQualifyModelReference(string $sub_namespace, string $model_name): string

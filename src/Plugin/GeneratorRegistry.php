@@ -28,8 +28,6 @@ class GeneratorRegistry
      */
     public function registerGenerator(string $type, Generator $generator): self
     {
-        $msg = '[GeneratorRegistry] Registering generator for type: ' . $type . ' (' . get_class($generator) . ')';
-        file_put_contents('/tmp/genreg.log', $msg . "\n", FILE_APPEND);
         $this->generators[$type] = $generator;
         $this->updateTypeMap($type, $generator);
         $this->compositeGenerator->addGenerator($generator);

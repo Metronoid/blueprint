@@ -1,0 +1,23 @@
+<?php
+
+namespace {{ namespace }};
+
+{{ modelImports }}
+
+class {{ className }}
+{
+    public function __construct()
+    {
+        //
+    }
+
+    public function getData(): array
+    {
+        {{ modelQuery }}
+        {{ columns }}
+        {{ filters }}
+        return $query->get()->toArray();
+    }
+
+{{ apiIntegration }}
+} 

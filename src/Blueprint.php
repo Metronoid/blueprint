@@ -198,14 +198,12 @@ class Blueprint
             // Legacy generator support
             foreach ($this->generators as $generator) {
                 if ($this->shouldGenerate($generator->types(), $only, $skip)) {
-                    // Fire generator executing event
-                    $this->fireEvent(new GeneratorExecuting($tree, $generator, $only, $skip));
-                    
-                    $output = $generator->output($tree, $overwriteMigrations);
-                    $components = array_merge_recursive($components, $output);
-                    
-                    // Fire generator executed event
-                    $this->fireEvent(new GeneratorExecuted($tree, $generator, $output, $only, $skip));
+                    try {
+                        $output = $generator->output($tree, $overwriteMigrations);
+                        $components = array_merge_recursive($components, $output);
+                    } catch (\Throwable $e) {
+                        throw $e;
+                    }
                 }
             }
         }

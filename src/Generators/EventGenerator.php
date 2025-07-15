@@ -15,11 +15,6 @@ class EventGenerator extends AbstractClassGenerator implements Generator
     {
         $this->tree = $tree;
 
-        foreach ($tree->dashboards() as $dashboard) {
-            $this->generateDashboardEvents($dashboard, $tree);
-            $this->generateWidgetEvents($dashboard, $tree);
-        }
-
         return $this->output;
     }
 

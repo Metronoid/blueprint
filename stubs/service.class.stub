@@ -1,0 +1,58 @@
+<?php
+
+namespace {{ namespace }};
+
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+{{ modelQueries }}
+
+class {{ className }}
+{
+    public function __construct()
+    {
+        //
+    }
+
+    public function getDashboardData(): array
+    {
+        return Cache::remember('dashboard.{{ dashboardName }}.data', 300, function () {
+            return [
+                'widgets' => $this->getWidgetData(),
+                'analytics' => $this->getAnalyticsData(),
+                'plugins' => $this->getPluginData(),
+            ];
+        });
+    }
+
+    public function getWidgetData(): array
+    {
+        return [
+            // Widget data will be populated by individual widget services
+        ];
+    }
+
+    public function getAnalyticsData(): array
+    {
+        return [
+            'total_users' => 0,
+            'total_posts' => 0,
+            'total_comments' => 0,
+            'recent_activity' => [],
+        ];
+    }
+
+{{ widgetMethods }}
+
+{{ pluginIntegration }}
+
+    public function clearCache(): void
+    {
+        Cache::forget('dashboard.{{ dashboardName }}.data');
+    }
+
+    public function refreshData(): array
+    {
+        $this->clearCache();
+        return $this->getDashboardData();
+    }
+} 

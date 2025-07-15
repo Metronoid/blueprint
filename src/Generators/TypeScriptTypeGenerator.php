@@ -15,11 +15,6 @@ class TypeScriptTypeGenerator extends AbstractClassGenerator implements Generato
     {
         $this->tree = $tree;
 
-        foreach ($tree->dashboards() as $dashboard) {
-            $this->generateDashboardTypes($dashboard, $tree);
-            $this->generateWidgetTypes($dashboard, $tree);
-        }
-
         return $this->output;
     }
 

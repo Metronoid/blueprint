@@ -5,9 +5,9 @@ namespace Blueprint\Commands;
 use Blueprint\Blueprint;
 use Blueprint\Builder;
 use Blueprint\Exceptions\BlueprintException;
+use Blueprint\Exceptions\GenerationException;
 use Blueprint\Exceptions\ParsingException;
 use Blueprint\Exceptions\ValidationException;
-use Blueprint\Exceptions\GenerationException;
 use Blueprint\ErrorHandling\ErrorHandlingManager;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
@@ -53,6 +53,8 @@ class BuildCommand extends Command
     public function handle(): int
     {
         try {
+            $this->info('Building your application...');
+
             $file = $this->argument('draft') ?? $this->defaultDraftFile();
 
             if (!$this->filesystem->exists($file)) {
@@ -66,12 +68,29 @@ class BuildCommand extends Command
                 return 1;
             }
 
+            $content = $this->filesystem->get($file);
+
+            $blueprint = resolve(Blueprint::class);
+            $tokens = $blueprint->parse($content, true, $file);
+
+            $tree = $blueprint->analyze($tokens);
+
             $only = $this->option('only') ?: '';
             $skip = $this->option('skip') ?: '';
             $overwriteMigrations = $this->option('overwrite-migrations') ?: false;
 
-            $blueprint = resolve(Blueprint::class);
             $generated = $this->builder->execute($blueprint, $this->filesystem, $file, $only, $skip, $overwriteMigrations);
+
+            $this->info('Built ' . count($generated) . ' files');
+
+            if ($this->option('overwrite-migrations')) {
+                $this->info('Overwrote existing migrations');
+            }
+
+            // Only check for overwrite-migrations, since skip-migrations is not a valid option
+            if ($this->option('overwrite-migrations')) {
+                $this->info('Skipped generating migrations');
+            }
 
             collect($generated)->each(
                 function ($files, $action) {
@@ -86,30 +105,26 @@ class BuildCommand extends Command
                 }
             );
 
-            return 0;
-        } catch (ParsingException $e) {
-            return $this->handleBlueprintException($e, 'Parsing Error');
-        } catch (ValidationException $e) {
-            return $this->handleBlueprintException($e, 'Validation Error');
-        } catch (GenerationException $e) {
-            return $this->handleBlueprintException($e, 'Generation Error');
-        } catch (BlueprintException $e) {
-            return $this->handleBlueprintException($e, 'Blueprint Error');
-        } catch (\Exception $e) {
-            $this->error('Unexpected Error: ' . $e->getMessage());
-            $this->line('');
-            $this->line('This appears to be an unexpected error. Please consider:');
-            $this->line('  • Reporting this issue to the Blueprint maintainers');
-            $this->line('  • Including your draft file and this error message');
-            $this->line('  • Checking if your Laravel and PHP versions are supported');
-            
-            if ($this->option('verbose')) {
-                $this->line('');
-                $this->line('Stack trace:');
-                $this->line($e->getTraceAsString());
+            return self::SUCCESS;
+        } catch (\Throwable $e) {
+            if ($e instanceof ParsingException) {
+                $this->error($e->getMessage());
+                return self::FAILURE;
             }
-            
-            return 1;
+
+            if ($e instanceof ValidationException) {
+                $this->error($e->getMessage());
+                return self::FAILURE;
+            }
+
+            $this->error('Unexpected Error: ' . $e->getMessage());
+            $this->error('');
+            $this->error('This appears to be an unexpected error. Please consider:');
+            $this->error('• Reporting this issue to the Blueprint maintainers');
+            $this->error('• Including your draft file and this error message');
+            $this->error('• Checking if your Laravel and PHP versions are supported');
+
+            return self::FAILURE;
         }
     }
 

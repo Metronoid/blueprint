@@ -19,6 +19,12 @@ class SeederLexer implements Lexer
 
     private function analyzeValue($value): array
     {
-        return preg_split('/,([ \t]+)?/', $value);
+        if (is_array($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            return preg_split('/,([ \t]+)?/', $value);
+        }
+        return [];
     }
 }

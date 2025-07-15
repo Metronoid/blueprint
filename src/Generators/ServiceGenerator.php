@@ -15,11 +15,6 @@ class ServiceGenerator extends AbstractClassGenerator implements Generator
     {
         $this->tree = $tree;
 
-        foreach ($tree->dashboards() as $dashboard) {
-            $this->generateDashboardService($dashboard, $tree);
-            $this->generateWidgetServices($dashboard, $tree);
-        }
-
         return $this->output;
     }
 

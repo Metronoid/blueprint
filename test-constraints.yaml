@@ -30,7 +30,8 @@ models:
     preferences: json
     birth_date: date before:today
     relationships:
-      hasMany: Order
+      hasMany:
+        - Order
 
 controllers:
   Product:

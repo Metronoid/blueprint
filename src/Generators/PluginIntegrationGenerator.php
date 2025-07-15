@@ -15,11 +15,6 @@ class PluginIntegrationGenerator extends AbstractClassGenerator implements Gener
     {
         $this->tree = $tree;
 
-        foreach ($tree->dashboards() as $dashboard) {
-            $this->generatePluginIntegration($dashboard, $tree);
-            $this->generateWidgetPluginIntegration($dashboard, $tree);
-        }
-
         return $this->output;
     }
 

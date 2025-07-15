@@ -15,11 +15,6 @@ class TestGenerator extends AbstractClassGenerator implements Generator
     {
         $this->tree = $tree;
 
-        foreach ($tree->dashboards() as $dashboard) {
-            $this->generateDashboardTests($dashboard, $tree);
-            $this->generateWidgetTests($dashboard, $tree);
-        }
-
         return $this->output;
     }
 

@@ -11,14 +11,14 @@ class ResourceGenerator extends AbstractClassGenerator implements Generator
 {
     protected array $types = ['resources'];
 
+    public function __toString(): string
+    {
+        return 'ResourceGenerator';
+    }
+
     public function output(Tree $tree): array
     {
         $this->tree = $tree;
-
-        foreach ($tree->dashboards() as $dashboard) {
-            $this->generateDashboardResources($dashboard, $tree);
-            $this->generateWidgetResources($dashboard, $tree);
-        }
 
         return $this->output;
     }
@@ -82,13 +82,21 @@ class ResourceGenerator extends AbstractClassGenerator implements Generator
         $model = $widget->model();
         $modelData = $model ? $tree->modelForContext($model) : null;
 
+        if ($modelData && !($modelData instanceof \Blueprint\Models\Model)) {
+            return '';
+        }
+
+        $fields = $this->generateResourceFields($widget, $modelData);
+        $relationships = $this->generateResourceRelationships($widget, $modelData);
+        $imports = $this->generateWidgetResourceImports($widget, $tree);
+
         $replacements = [
             '{{ namespace }}' => 'App\\Http\\Resources',
             '{{ className }}' => Str::studly($model) . 'Resource',
             '{{ modelName }}' => Str::studly($model),
-            '{{ fields }}' => $this->generateResourceFields($widget, $modelData),
-            '{{ relationships }}' => $this->generateResourceRelationships($widget, $modelData),
-            '{{ imports }}' => $this->generateWidgetResourceImports($widget, $tree),
+            '{{ fields }}' => $fields,
+            '{{ relationships }}' => $relationships,
+            '{{ imports }}' => $imports,
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $stub);
@@ -121,12 +129,14 @@ class ResourceGenerator extends AbstractClassGenerator implements Generator
     protected function generateResourceFields($widget, $modelData): string
     {
         if (!$modelData) {
-            return "        return [\n            'id' => \$this->id,\n        ];";
+            $result = "        return [\n            'id' => \\$this->id,\n        ];";
+            return $result;
         }
 
         $columns = $widget->columns();
         if (empty($columns)) {
-            $columns = array_keys($modelData->columns());
+            $modelColumns = $modelData->columns();
+            $columns = array_keys($modelColumns);
         }
 
         $fields = [];
@@ -140,12 +150,21 @@ class ResourceGenerator extends AbstractClassGenerator implements Generator
     protected function generateResourceRelationships($widget, $modelData): string
     {
         if (!$modelData) {
-            return '';
+            $result = '';
+            return $result;
         }
 
         $relationships = [];
         foreach ($modelData->relationships() as $relationship) {
-            $relationships[] = "        return [\n            '$relationship' => new " . Str::studly($relationship) . "Resource(\$this->whenLoaded('$relationship')),\n        ];";
+            
+            // Handle case where relationship is an array
+            if (is_array($relationship)) {
+                foreach ($relationship as $rel) {
+                    $relationships[] = "        return [\n            '$rel' => new " . Str::studly($rel) . "Resource(\$this->whenLoaded('$rel')),\n        ];";
+                }
+            } else {
+                $relationships[] = "        return [\n            '$relationship' => new " . Str::studly($relationship) . "Resource(\$this->whenLoaded('$relationship')),\n        ];";
+            }
         }
 
         return implode("\n\n", $relationships);

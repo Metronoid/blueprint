@@ -1,9 +1,0 @@
-import { render, screen } from '@testing-library/react';
-import {{ componentName }} from './{{ componentName }}';
-
-describe('{{ componentName }}', () => {
-  it('renders without crashing', () => {
-    render(<{{ componentName }} />);
-    expect(screen.getByText('{{ componentName }}')).toBeInTheDocument();
-  });
-}); 

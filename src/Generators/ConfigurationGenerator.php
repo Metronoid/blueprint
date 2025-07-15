@@ -15,11 +15,6 @@ class ConfigurationGenerator extends AbstractClassGenerator implements Generator
     {
         $this->tree = $tree;
 
-        foreach ($tree->dashboards() as $dashboard) {
-            $this->generateDashboardConfig($dashboard, $tree);
-            $this->generateWidgetConfig($dashboard, $tree);
-        }
-
         return $this->output;
     }
 

@@ -51,6 +51,28 @@ class ControllerLexer implements Lexer
                 unset($definition['resource']);
 
                 $definition = array_merge($resource_definition, $definition);
+
+                // Fix: Convert any Collection or array values in resource_definition to strings
+                foreach ($definition as $method => &$body) {
+                    // If $body is a numerically indexed array of associative arrays, flatten it
+                    if (is_array($body) && array_keys($body) === range(0, count($body) - 1)) {
+                        $flat = [];
+                        foreach ($body as $item) {
+                            if (is_array($item)) {
+                                $flat = array_merge($flat, $item);
+                            }
+                        }
+                        $body = $flat;
+                    }
+                    if (is_object($body) && method_exists($body, 'toArray')) {
+                        $body = $body->toArray();
+                    }
+                    // If $body is an array with a single value, use that value
+                    if (is_array($body) && count($body) === 1 && isset($body[0])) {
+                        $body = $body[0];
+                    }
+                }
+                unset($body);
             }
 
             if (isset($definition['invokable'])) {
@@ -91,6 +113,39 @@ class ControllerLexer implements Lexer
             }
 
             foreach ($definition as $method => $body) {
+                // Skip non-method keys
+                if (in_array($method, ['model', 'methods', 'api_resource', 'validation', 'authorization', 'relationships'])) {
+                    continue;
+                }
+                // Skip if $body is a numerically indexed array (list)
+                if (is_array($body) && array_keys($body) === range(0, count($body) - 1)) {
+                    continue;
+                }
+                // Ensure $body is always an array for StatementLexer
+                if (!is_array($body)) {
+                    $body = ['action' => $body];
+                }
+                // Final normalization: ensure all values are strings
+                $allStrings = true;
+                foreach ($body as $k => $v) {
+                    if (is_object($v) && method_exists($v, 'toArray')) {
+                        $v = $v->toArray();
+                    }
+                    if (is_array($v)) {
+                        if (count($v) === 1 && isset($v[0])) {
+                            $v = $v[0];
+                        } else {
+                            $v = implode(', ', array_map(function($item) { return is_scalar($item) ? $item : var_export($item, true); }, $v));
+                        }
+                    }
+                    if (!is_scalar($v)) {
+                        $allStrings = false;
+                    }
+                    $body[$k] = (string)$v;
+                }
+                if (!$allStrings) {
+                    continue;
+                }
                 $controller->addMethod($method, $this->statementLexer->analyze($body));
             }
 
@@ -113,7 +168,7 @@ class ControllerLexer implements Lexer
                         [Str::camel($model), Str::camel(Str::plural($model))],
                         $statement
                     );
-                }),
+                })->all(), // <-- ensure this is a plain array
             ])
             ->toArray();
     }
@@ -197,3 +252,4 @@ class ControllerLexer implements Lexer
         return collect($methods)->every(fn ($item, $key) => Str::startsWith($item, 'api.'));
     }
 }
+

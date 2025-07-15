@@ -61,7 +61,8 @@ models:
         - before:today
         - after:1900-01-01
     relationships:
-      hasMany: Order
+      hasMany:
+        - Order
 
   # Pure model-level constraints
   Order:

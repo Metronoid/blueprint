@@ -52,18 +52,7 @@ class Tree
         return $this->tree['seeders'];
     }
 
-    public function frontend(): array
-    {
-        return $this->tree['frontend'] ?? [];
-    }
 
-    public function dashboards(): array
-    {
-        $dashboardNames = isset($this->tree['dashboards']) ? array_map(function($d) { return method_exists($d, 'name') ? $d->name() : (string)$d; }, $this->tree['dashboards']) : [];
-        $msg = '[Tree] dashboards(): ' . json_encode($dashboardNames);
-        file_put_contents('/tmp/treedashboards.log', $msg . "\n", FILE_APPEND);
-        return $this->tree['dashboards'] ?? [];
-    }
 
     public function modelForContext(string $context, bool $throw = false)
     {

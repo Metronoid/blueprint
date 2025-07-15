@@ -4,7 +4,7 @@ namespace Blueprint;
 
 use Blueprint\Commands\BuildCommand;
 use Blueprint\Commands\EraseCommand;
-use Blueprint\Commands\ImportDashboardCommand;
+
 use Blueprint\Commands\InitCommand;
 use Blueprint\Commands\NewCommand;
 use Blueprint\Commands\PublishStubsCommand;
@@ -16,7 +16,7 @@ use Blueprint\Builder;
 use Blueprint\Contracts\PluginManager;
 use Blueprint\FileMixins;
 use Blueprint\Plugin\PluginDiscovery as ConcretePluginDiscovery;
-use Blueprint\Services\DashboardPluginManager;
+
 use Blueprint\Plugin\PluginManager as ConcretePluginManager;
 use Blueprint\Plugin\GeneratorRegistry;
 use Blueprint\Plugin\ConfigValidator;
@@ -52,16 +52,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
         // Boot plugin system
         $this->bootPluginSystem();
 
-        // Register dashboard views
-        $this->loadViewsFrom(dirname(__DIR__) . '/resources/views', 'blueprint');
-        $this->publishes([
-            dirname(__DIR__) . '/resources/views' => resource_path('views/vendor/blueprint'),
-        ], 'blueprint-views');
 
-        // Register dashboard routes
-        if ($this->app->runningInConsole() === false || $this->app->environment('testing')) {
-            $this->loadRoutesFrom(dirname(__DIR__) . '/routes/web.php');
-        }
     }
 
     /**
@@ -85,7 +76,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
         $this->app->bind('command.blueprint.new', fn ($app) => new NewCommand($app['files']));
         $this->app->bind('command.blueprint.init', fn ($app) => new InitCommand);
         $this->app->bind('command.blueprint.stubs', fn ($app) => new PublishStubsCommand);
-        $this->app->bind('command.blueprint.import-dashboard', fn ($app) => new ImportDashboardCommand);
+
         $this->app->bind('command.blueprint.validate-yaml', fn ($app) => new ValidateYamlCommand(
             app(\Blueprint\ErrorHandling\RecoveryManager::class),
             app(\Blueprint\ErrorHandling\ErrorLogger::class)
@@ -105,8 +96,6 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             $blueprint->registerLexer(new \Blueprint\Lexers\ModelLexer);
             $blueprint->registerLexer(new \Blueprint\Lexers\SeederLexer);
             $blueprint->registerLexer(new \Blueprint\Lexers\ControllerLexer(new \Blueprint\Lexers\StatementLexer));
-            $blueprint->registerLexer(new \Blueprint\Lexers\FrontendLexer);
-            $blueprint->registerLexer(new \Blueprint\Lexers\DashboardLexer);
 
             // Register plugin lexers if plugin system is available
             if ($app->bound(PluginManager::class)) {
@@ -134,10 +123,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
                 $type = class_basename($generator);
                 $generatorRegistry->registerGenerator($type, $generatorInstance);
             }
-            // Register DashboardGenerator explicitly
-            $dashboardGenerator = new \Blueprint\Generators\DashboardGenerator($app['files']);
-            $blueprint->registerGenerator($dashboardGenerator);
-            $generatorRegistry->registerGenerator('dashboard', $dashboardGenerator);
+
 
             return $blueprint;
         });
@@ -155,7 +141,6 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             'command.blueprint.new',
             'command.blueprint.init',
             'command.blueprint.stubs',
-            'command.blueprint.import-dashboard',
             'command.blueprint.validate-yaml',
         ]);
     }
@@ -171,7 +156,6 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             'command.blueprint.trace',
             'command.blueprint.new',
             'command.blueprint.init',
-            'command.blueprint.import-dashboard',
             'command.blueprint.validate-yaml',
             Blueprint::class,
             PluginDiscovery::class,
@@ -224,9 +208,7 @@ class BlueprintServiceProvider extends ServiceProvider implements DeferrableProv
             return $manager;
         });
 
-        $this->app->singleton(\Blueprint\Services\DashboardPluginManager::class, function ($app) {
-            return new \Blueprint\Services\DashboardPluginManager($app['files']);
-        });
+
     }
 
     /**

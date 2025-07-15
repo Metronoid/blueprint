@@ -168,32 +168,11 @@ return [
         'job' => \Blueprint\Generators\Statements\JobGenerator::class,
         'mail' => \Blueprint\Generators\Statements\MailGenerator::class,
         'notification' => \Blueprint\Generators\Statements\NotificationGenerator::class,
-        'resource' => \Blueprint\Generators\Statements\ResourceGenerator::class,
+        'resource' => \Blueprint\Generators\ResourceGenerator::class,
         'view' => \Blueprint\Generators\Statements\ViewGenerator::class,
         'inertia_page' => \Blueprint\Generators\Statements\InertiaPageGenerator::class,
         'policy' => \Blueprint\Generators\PolicyGenerator::class,
         'layout' => \Blueprint\Generators\LayoutGenerator::class,
-        'frontend' => \Blueprint\Generators\FrontendGenerator::class,
-        'dashboard' => \Blueprint\Generators\DashboardGenerator::class,
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Frontend Generation
-    |--------------------------------------------------------------------------
-    |
-    | Configure frontend generation settings for React, Vue, and other
-    | frontend frameworks.
-    |
-    */
-    'frontend' => [
-        'default_framework' => 'react',
-        'generate_tests' => true,
-        'generate_stories' => false,
-        'generate_css' => true,
-        'components_path' => 'resources/js/components',
-        'pages_path' => 'resources/js/Pages',
-        'layouts_path' => 'resources/js/Layouts',
     ],
 
     /*

@@ -21,8 +21,15 @@ final class BuildCommandTest extends TestCase
         $this->filesystem->shouldReceive('exists')
             ->with('draft.yaml')
             ->andReturnTrue();
+        $this->filesystem->shouldReceive('get')
+            ->with('draft.yaml')
+            ->andReturn("models:\n  User:\n    name: string");
 
         $builder = $this->mock(Builder::class);
+        $this->app->instance(Builder::class, $builder);
+        $this->app->bind('command.blueprint.build', function ($app) use ($builder) {
+            return new \Blueprint\Commands\BuildCommand($app['files'], $builder);
+        });
 
         $builder->shouldReceive('execute')
             ->with(resolve(Blueprint::class), $this->files, 'draft.yaml', '', '', false)
@@ -38,8 +45,15 @@ final class BuildCommandTest extends TestCase
         $this->filesystem->shouldReceive('exists')
             ->with('test.yml')
             ->andReturnTrue();
+        $this->filesystem->shouldReceive('get')
+            ->with('test.yml')
+            ->andReturn("models:\n  User:\n    name: string");
 
         $builder = $this->mock(Builder::class);
+        $this->app->instance(Builder::class, $builder);
+        $this->app->bind('command.blueprint.build', function ($app) use ($builder) {
+            return new \Blueprint\Commands\BuildCommand($app['files'], $builder);
+        });
 
         $builder->shouldReceive('execute')
             ->with(resolve(Blueprint::class), $this->files, 'test.yml', 'a,b,c', 'x,y,z', false)
@@ -57,6 +71,10 @@ final class BuildCommandTest extends TestCase
             ->andReturnFalse();
 
         $builder = $this->mock(Builder::class);
+        $this->app->instance(Builder::class, $builder);
+        $this->app->bind('command.blueprint.build', function ($app) use ($builder) {
+            return new \Blueprint\Commands\BuildCommand($app['files'], $builder);
+        });
 
         $builder->shouldNotReceive('execute');
 
@@ -70,7 +88,14 @@ final class BuildCommandTest extends TestCase
         $this->filesystem->shouldReceive('exists')
             ->with('draft.yaml')
             ->andReturnTrue();
+        $this->filesystem->shouldReceive('get')
+            ->with('draft.yaml')
+            ->andReturn("models:\n  User:\n    name: string");
         $builder = $this->mock(Builder::class);
+        $this->app->instance(Builder::class, $builder);
+        $this->app->bind('command.blueprint.build', function ($app) use ($builder) {
+            return new \Blueprint\Commands\BuildCommand($app['files'], $builder);
+        });
         $builder->shouldReceive('execute')
             ->with(resolve(Blueprint::class), $this->files, 'draft.yaml', '', '', false)
             ->andReturn([

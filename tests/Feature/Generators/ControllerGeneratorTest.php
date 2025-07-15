@@ -56,14 +56,23 @@ final class ControllerGeneratorTest extends TestCase
             ->andReturn($this->stub('controller.method.stub'));
 
         $this->filesystem->expects('exists')
-            ->with(dirname($path))
+            ->with(is_array($path) ? dirname($path[0]) : dirname($path))
             ->andReturnTrue();
-        $this->filesystem->expects('put')
-            ->with($path, $this->fixture($controller));
+        if (is_array($path) && is_array($controller)) {
+            foreach ($path as $i => $p) {
+                $this->filesystem->expects('put')
+                    ->with($p, $this->fixture($controller[$i]))
+                    ->andReturn(true);
+            }
+        } else {
+            $this->filesystem->expects('put')
+                ->with($path, $this->fixture($controller))
+                ->andReturn(true);
+        }
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
-        $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
+        $this->assertGeneratorOutputEquals(['created' => (array) $path], $this->subject->output($tree));
     }
 
     #[Test]
@@ -86,7 +95,8 @@ final class ControllerGeneratorTest extends TestCase
             ->with(dirname($path))
             ->andReturnTrue();
         $this->filesystem->expects('put')
-            ->with($path, $this->fixture($controller));
+            ->with($path, $this->fixture($controller))
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
@@ -112,16 +122,19 @@ final class ControllerGeneratorTest extends TestCase
             ->with(dirname($certificateController))
             ->andReturnTrue();
         $this->filesystem->expects('put')
-            ->with($certificateController, $this->fixture('controllers/certificate-controller.php'));
+            ->with($certificateController, $this->fixture('controllers/certificate-controller.php'))
+            ->andReturn(true);
 
         $this->filesystem->expects('exists')
             ->with(dirname($certificateTypeController))
             ->andReturnTrue();
         $this->filesystem->expects('put')
-            ->with($certificateTypeController, $this->fixture('controllers/certificate-type-controller.php'));
+            ->with($certificateTypeController, $this->fixture('controllers/certificate-type-controller.php'))
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/pascal-case.yaml'));
         $tree = $this->blueprint->analyze($tokens);
+
         $this->assertGeneratorOutputEquals(['created' => [$certificateController, $certificateTypeController]], $this->subject->output($tree));
     }
 
@@ -146,7 +159,8 @@ final class ControllerGeneratorTest extends TestCase
         $this->filesystem->expects('makeDirectory')
             ->with('src/path/Other/Http', 0755, true);
         $this->filesystem->expects('put')
-            ->with('src/path/Other/Http/UserController.php', $this->fixture('controllers/controller-configured.php'));
+            ->with('src/path/Other/Http/UserController.php', $this->fixture('controllers/controller-configured.php'))
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/simple-controller.yaml'));
         $tree = $this->blueprint->analyze($tokens);
@@ -172,10 +186,12 @@ final class ControllerGeneratorTest extends TestCase
             ->with(dirname($path))
             ->andReturnTrue();
         $this->filesystem->expects('put')
-            ->with($path, $this->fixture($controller));
+            ->with($path, $this->fixture($controller))
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
+
         $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
@@ -197,10 +213,12 @@ final class ControllerGeneratorTest extends TestCase
             ->with(dirname($path))
             ->andReturnTrue();
         $this->filesystem->expects('put')
-            ->with($path, $this->fixture($controller));
+            ->with($path, $this->fixture($controller))
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
+
         $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
@@ -229,6 +247,7 @@ final class ControllerGeneratorTest extends TestCase
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
+
         $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
     }
 
@@ -252,11 +271,29 @@ final class ControllerGeneratorTest extends TestCase
             ->with(dirname($path))
             ->andReturnTrue();
         $this->filesystem->expects('put')
-            ->with($path, $this->fixture($controller));
+            ->with($path, $this->fixture($controller))
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
+
         $this->assertGeneratorOutputEquals(['created' => [$path]], $this->subject->output($tree));
+    }
+
+    #[Test]
+    public function debug_mock_expectations(): void
+    {
+        // Test that the mock expectations work correctly
+        $this->filesystem->expects('put')
+            ->with('test.php', 'test content')
+            ->andReturn(true);
+        
+        $this->subject = new ControllerGenerator($this->filesystem);
+        
+        // This should call the mock and pass
+        $this->filesystem->put('test.php', 'test content');
+        
+        $this->assertTrue(true);
     }
 
     public static function controllerTreeDataProvider(): array
