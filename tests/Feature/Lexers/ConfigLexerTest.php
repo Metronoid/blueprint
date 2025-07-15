@@ -53,29 +53,30 @@ final class ConfigLexerTest extends TestCase
     #[Test]
     public function it_uses_app_path_and_namespace_from_inline_configuration(): void
     {
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('model.class.stub')
             ->andReturn($this->stub('model.class.stub'));
 
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('model.fillable.stub')
             ->andReturn($this->stub('model.fillable.stub'));
 
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('model.casts.stub')
             ->andReturn($this->stub('model.casts.stub'));
 
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('model.method.stub')
             ->andReturn($this->stub('model.method.stub'));
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with('atum/Models')
             ->andReturnFalse();
-        $this->filesystem->expects('makeDirectory')
+        $this->filesystem->shouldReceive('makeDirectory')
             ->with('atum/Models', 0755, true);
-        $this->filesystem->expects('put')
-            ->with('atum/Models/Comment.php', $this->fixture('models/model-configured.php'));
+        $this->filesystem->shouldReceive('put')
+            ->with('atum/Models/Comment.php', $this->fixture('models/model-configured.php'))
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/relationships-configured.yaml'));
         $tree = $this->blueprint->analyze($tokens);
@@ -86,20 +87,21 @@ final class ConfigLexerTest extends TestCase
     #[Test]
     public function it_uses_controller_namespace_config_from_yaml_override(): void
     {
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.class.stub')
             ->andReturn($this->stub('controller.class.stub'));
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.method.stub')
             ->andReturn($this->stub('controller.method.stub'));
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with('shift/Other/Http')
             ->andReturnFalse();
-        $this->filesystem->expects('makeDirectory')
+        $this->filesystem->shouldReceive('makeDirectory')
             ->with('shift/Other/Http', 0755, true);
-        $this->filesystem->expects('put')
-            ->with('shift/Other/Http/UserController.php', $this->fixture('controllers/controller-configured.php'));
+        $this->filesystem->shouldReceive('put')
+            ->with('shift/Other/Http/UserController.php', $this->fixture('controllers/controller-configured.php'))
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture('drafts/controller-configured.yaml'));
         $tree = $this->blueprint->analyze($tokens);

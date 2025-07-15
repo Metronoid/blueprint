@@ -34,23 +34,17 @@ class ControllerGenerator extends AbstractClassGenerator implements Generator
 
         $stub = $this->filesystem->stub('controller.class.stub');
 
-        error_log('DEBUG: Tree controllers count: ' . count($tree->controllers()));
-        
         /** @var \Blueprint\Models\Controller $controller */
         foreach ($tree->controllers() as $controller) {
-            error_log('DEBUG: Processing controller: ' . $controller->className());
             $this->addImport($controller, 'Illuminate\\Http\\Request');
             if ($controller->fullyQualifiedNamespace() !== 'App\\Http\\Controllers') {
                 $this->addImport($controller, 'App\\Http\\Controllers\\Controller');
             }
             $path = $this->getPath($controller);
-            error_log('DEBUG: Path: ' . $path);
 
             try {
                 $this->create($path, $this->populateStub($stub, $controller));
-                error_log('DEBUG: Successfully created controller');
             } catch (\Exception $e) {
-                error_log('DEBUG: Exception in create: ' . $e->getMessage());
                 throw $e;
             }
         }

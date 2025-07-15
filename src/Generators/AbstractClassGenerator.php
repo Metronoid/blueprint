@@ -39,8 +39,6 @@ class AbstractClassGenerator
     protected function create(string $path, $content): void
     {
         try {
-            error_log('DEBUG: create() called with path: ' . $path);
-            error_log('DEBUG: Filesystem class: ' . get_class($this->filesystem) . ', hash: ' . spl_object_hash($this->filesystem));
             $directory = dirname($path);
             
             if (!$this->filesystem->exists($directory)) {

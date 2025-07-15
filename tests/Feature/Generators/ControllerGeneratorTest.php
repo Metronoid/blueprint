@@ -48,24 +48,24 @@ final class ControllerGeneratorTest extends TestCase
     #[DataProvider('controllerTreeDataProvider')]
     public function output_generates_controllers_for_tree($definition, $path, $controller): void
     {
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.class.stub')
             ->andReturn($this->stub('controller.class.stub'));
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.method.stub')
             ->andReturn($this->stub('controller.method.stub'));
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with(is_array($path) ? dirname($path[0]) : dirname($path))
             ->andReturnTrue();
         if (is_array($path) && is_array($controller)) {
             foreach ($path as $i => $p) {
-                $this->filesystem->expects('put')
+                $this->filesystem->shouldReceive('put')
                     ->with($p, $this->fixture($controller[$i]))
                     ->andReturn(true);
             }
         } else {
-            $this->filesystem->expects('put')
+            $this->filesystem->shouldReceive('put')
                 ->with($path, $this->fixture($controller))
                 ->andReturn(true);
         }
@@ -84,17 +84,17 @@ final class ControllerGeneratorTest extends TestCase
 
         $this->app['config']->set('blueprint.models_namespace', 'Models');
 
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.class.stub')
             ->andReturn($this->stub('controller.class.stub'));
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.method.stub')
             ->andReturn($this->stub('controller.method.stub'));
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with(dirname($path))
             ->andReturnTrue();
-        $this->filesystem->expects('put')
+        $this->filesystem->shouldReceive('put')
             ->with($path, $this->fixture($controller))
             ->andReturn(true);
 
@@ -107,10 +107,10 @@ final class ControllerGeneratorTest extends TestCase
     #[Test]
     public function output_works_for_pascal_case_definition(): void
     {
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.class.stub')
             ->andReturn($this->stub('controller.class.stub'));
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.method.stub')
             ->andReturn($this->stub('controller.method.stub'))
             ->twice();
@@ -118,17 +118,17 @@ final class ControllerGeneratorTest extends TestCase
         $certificateController = 'app/Http/Controllers/CertificateController.php';
         $certificateTypeController = 'app/Http/Controllers/CertificateTypeController.php';
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with(dirname($certificateController))
             ->andReturnTrue();
-        $this->filesystem->expects('put')
+        $this->filesystem->shouldReceive('put')
             ->with($certificateController, $this->fixture('controllers/certificate-controller.php'))
             ->andReturn(true);
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with(dirname($certificateTypeController))
             ->andReturnTrue();
-        $this->filesystem->expects('put')
+        $this->filesystem->shouldReceive('put')
             ->with($certificateTypeController, $this->fixture('controllers/certificate-type-controller.php'))
             ->andReturn(true);
 
@@ -146,19 +146,19 @@ final class ControllerGeneratorTest extends TestCase
         $this->app['config']->set('blueprint.models_namespace', '');
         $this->app['config']->set('blueprint.controllers_namespace', 'Other\\Http');
 
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.class.stub')
             ->andReturn($this->stub('controller.class.stub'));
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.method.stub')
             ->andReturn($this->stub('controller.method.stub'));
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with('src/path/Other/Http')
             ->andReturnFalse();
-        $this->filesystem->expects('makeDirectory')
+        $this->filesystem->shouldReceive('makeDirectory')
             ->with('src/path/Other/Http', 0755, true);
-        $this->filesystem->expects('put')
+        $this->filesystem->shouldReceive('put')
             ->with('src/path/Other/Http/UserController.php', $this->fixture('controllers/controller-configured.php'))
             ->andReturn(true);
 
@@ -175,17 +175,17 @@ final class ControllerGeneratorTest extends TestCase
         $path = 'app/Http/Controllers/PostController.php';
         $controller = 'controllers/with-all-policies.php';
 
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.class.stub')
             ->andReturn($this->stub('controller.class.stub'));
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.method.stub')
             ->andReturn($this->stub('controller.method.stub'));
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with(dirname($path))
             ->andReturnTrue();
-        $this->filesystem->expects('put')
+        $this->filesystem->shouldReceive('put')
             ->with($path, $this->fixture($controller))
             ->andReturn(true);
 
@@ -202,17 +202,17 @@ final class ControllerGeneratorTest extends TestCase
         $path = 'app/Http/Controllers/PostController.php';
         $controller = 'controllers/with-some-policies.php';
 
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.class.stub')
             ->andReturn($this->stub('controller.class.stub'));
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.method.stub')
             ->andReturn($this->stub('controller.method.stub'));
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with(dirname($path))
             ->andReturnTrue();
-        $this->filesystem->expects('put')
+        $this->filesystem->shouldReceive('put')
             ->with($path, $this->fixture($controller))
             ->andReturn(true);
 
@@ -229,21 +229,22 @@ final class ControllerGeneratorTest extends TestCase
         $path = 'app/Http/Controllers/PostController.php';
         $controller = 'controllers/with-authorize-resource.php';
 
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.class.stub')
             ->andReturn($this->stub('controller.class.stub'));
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.method.stub')
             ->andReturn($this->stub('controller.method.stub'));
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.authorize-resource.stub')
             ->andReturn($this->stub('controller.authorize-resource.stub'));
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with(dirname($path))
             ->andReturnTrue();
-        $this->filesystem->expects('put')
-            ->with($path, $this->fixture($controller));
+        $this->filesystem->shouldReceive('put')
+            ->with($path, $this->fixture($controller))
+            ->andReturn(true);
 
         $tokens = $this->blueprint->parse($this->fixture($definition));
         $tree = $this->blueprint->analyze($tokens);
@@ -260,17 +261,17 @@ final class ControllerGeneratorTest extends TestCase
         $path = 'app/Http/Controllers/PostController.php';
         $controller = 'controllers/without-generating-resource-collection-classes.php';
 
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.class.stub')
             ->andReturn($this->stub('controller.class.stub'));
-        $this->filesystem->expects('stub')
+        $this->filesystem->shouldReceive('stub')
             ->with('controller.method.stub')
             ->andReturn($this->stub('controller.method.stub'));
 
-        $this->filesystem->expects('exists')
+        $this->filesystem->shouldReceive('exists')
             ->with(dirname($path))
             ->andReturnTrue();
-        $this->filesystem->expects('put')
+        $this->filesystem->shouldReceive('put')
             ->with($path, $this->fixture($controller))
             ->andReturn(true);
 
@@ -284,7 +285,7 @@ final class ControllerGeneratorTest extends TestCase
     public function debug_mock_expectations(): void
     {
         // Test that the mock expectations work correctly
-        $this->filesystem->expects('put')
+        $this->filesystem->shouldReceive('put')
             ->with('test.php', 'test content')
             ->andReturn(true);
         
